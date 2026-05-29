@@ -20,6 +20,7 @@
     }
   </script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-navy-900 text-slate-100">
@@ -27,7 +28,7 @@
     <div class="max-w-md w-full bg-navy-800 border border-navy-700 rounded-2xl p-6">
       <h1 class="text-2xl font-bold text-amber-400 mb-4">Import Teams</h1>
 
-      <div x-data="importApp()" x-init="init()" class="space-y-4">
+      <div x-data="importer" x-init="init()" class="space-y-4">
         <div class="bg-navy-900 rounded-lg p-3">
           <p class="text-sm text-slate-400" x-text="`${totalTeams} teams ready to import`"></p>
         </div>
@@ -48,8 +49,10 @@
   </div>
 
   <script src="./firebase-init.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
   <script>
-    function importApp() {
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('importer', function() {
       const teamsData = [
         { teamName: "Barry Jones/ Mark Britton", angler1Name: "Barry Jones", angler2Name: "Mark Britton" },
         { teamName: "Cody Brown/ Izaak Wetzel", angler1Name: "Cody Brown", angler2Name: "Izaak Wetzel" },
@@ -103,7 +106,8 @@
           this.loading = false;
         }
       };
-    }
+      });
+    });
   </script>
 </body>
 </html>
