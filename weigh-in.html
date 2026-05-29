@@ -30,14 +30,12 @@
   <script src="./auth-guard.js"></script>
 
   <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="tournaments.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Back</a>
     <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 LeagueCast</a>
-    <div class="flex items-center gap-2">
-      <a href="index.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Home</a>
-      <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')"
-        class="bg-navy-700 hover:bg-red-900 text-slate-400 hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold border border-navy-600 hover:border-red-800 transition-colors">
-        Sign Out
-      </button>
-    </div>
+    <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')"
+      class="bg-navy-700 hover:bg-red-900 text-slate-400 hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold border border-navy-600 hover:border-red-800 transition-colors">
+      Sign Out
+    </button>
   </nav>
 
   <main class="p-4 max-w-lg mx-auto" x-data="weighInPage" x-init="init()">
