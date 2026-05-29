@@ -262,7 +262,7 @@
             <div x-show="entry.expanded" x-transition class="border-t border-navy-700">
               <div class="px-4 py-2 bg-navy-900/50">
                 <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Tournament Breakdown</div>
-                <template x-for="t in tournaments" :key="t.id">
+                <template x-for="t in tournaments.filter(t => t.status === 'closed')" :key="t.id">
                   <div class="flex items-center justify-between py-2 border-b border-navy-700/40 last:border-0">
                     <div class="min-w-0">
                       <div class="text-sm text-slate-300 font-semibold truncate" x-text="t.name"></div>
