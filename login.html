@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — Admin Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
+
+  <script src="./firebase-init.js"></script>
+
+  <div class="w-full max-w-sm" x-data="loginPage" x-init="init()">
+
+    <div class="text-center mb-8">
+      <div class="text-6xl mb-3">🎣</div>
+      <h1 class="text-3xl font-black text-amber-400">ReelRank</h1>
+      <p class="text-slate-400 mt-1">League Admin</p>
+    </div>
+
+    <div class="bg-navy-800 border border-navy-700 rounded-2xl p-6 shadow-2xl">
+      <h2 class="text-lg font-bold text-white mb-5">Sign In</h2>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Email</label>
+          <input x-model="email" type="email" placeholder="admin@example.com"
+            @keyup.enter="login()"
+            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Password</label>
+          <input x-model="password" type="password" placeholder="••••••••"
+            @keyup.enter="login()"
+            class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+        </div>
+      </div>
+
+      <div x-show="error" class="mt-3 text-red-400 text-sm" x-text="error"></div>
+
+      <button @click="login()" :disabled="loading"
+        class="w-full mt-5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-navy-900 py-3.5 rounded-xl font-black text-lg transition-colors">
+        <span x-text="loading ? 'Signing in...' : 'Sign In'"></span>
+      </button>
+    </div>
+
+    <a href="index.html"
+      class="block w-full mt-4 bg-navy-800 hover:bg-navy-700 border border-navy-600 hover:border-amber-500/50 text-white py-4 rounded-xl font-bold text-lg text-center transition-colors">
+      🎣 Enter as Fisherman
+    </a>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('loginPage', () => ({
+        email: '',
+        password: '',
+        error: null,
+        loading: false,
+
+        init() {
+          // If already logged in, redirect to tournaments
+          firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+              const redirect = new URLSearchParams(window.location.search).get('redirect') || 'index.html';
+              window.location.href = redirect;
+            }
+          });
+        },
+
+        async login() {
+          this.error = null;
+          if (!this.email || !this.password) { this.error = 'Enter your email and password.'; return; }
+          this.loading = true;
+          try {
+            await firebase.auth().signInWithEmailAndPassword(this.email, this.password);
+            // onAuthStateChanged will handle redirect
+          } catch (e) {
+            this.error = e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found'
+              ? 'Invalid email or password.'
+              : 'Sign in failed. Please try again.';
+          }
+          this.loading = false;
+        }
+      }));
+    });
+  </script>
+</body>
+</html>

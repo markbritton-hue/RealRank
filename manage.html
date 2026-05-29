@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — Manage</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+
+  <script src="./firebase-init.js"></script>
+  <script src="./auth-guard.js"></script>
+
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <div class="flex items-center gap-2">
+      <a href="index.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Home</a>
+      <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')"
+        class="bg-navy-700 hover:bg-red-900 text-slate-400 hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold border border-navy-600 hover:border-red-800 transition-colors">
+        Sign Out
+      </button>
+    </div>
+  </nav>
+
+  <main class="p-4 sm:p-6 max-w-lg mx-auto">
+
+    <div class="pt-6 pb-6 text-center">
+      <h1 class="text-2xl font-bold text-amber-400">Manage</h1>
+      <p class="text-slate-500 text-sm mt-1">League administration</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+
+      <a href="tournaments.html"
+        class="bg-navy-800 border border-navy-700 hover:border-amber-500/50 hover:bg-navy-700 rounded-2xl p-6 flex flex-col items-center gap-3 transition-all group">
+        <span class="text-5xl">🎣</span>
+        <div class="text-center">
+          <div class="text-white font-bold text-lg group-hover:text-amber-400 transition-colors">Tournaments</div>
+          <div class="text-slate-500 text-xs mt-0.5">Create &amp; manage events</div>
+        </div>
+      </a>
+
+      <a href="teams.html"
+        class="bg-navy-800 border border-navy-700 hover:border-forest-500/50 hover:bg-navy-700 rounded-2xl p-6 flex flex-col items-center gap-3 transition-all group">
+        <span class="text-5xl">👥</span>
+        <div class="text-center">
+          <div class="text-white font-bold text-lg group-hover:text-forest-400 transition-colors">Teams</div>
+          <div class="text-slate-500 text-xs mt-0.5">Manage anglers</div>
+        </div>
+      </a>
+
+    </div>
+  </main>
+
+</body>
+</html>

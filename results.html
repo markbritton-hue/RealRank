@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — Results</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+
+  <script src="./firebase-init.js"></script>
+
+  <!-- Nav -->
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <a href="index.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Home</a>
+  </nav>
+
+  <main class="p-4 max-w-2xl mx-auto" x-data="tournamentResults" x-init="init()">
+
+    <div x-show="loading" class="flex justify-center py-12">
+      <div class="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div x-show="!loading && !tournament" class="text-center py-16 text-slate-400">
+      <p class="text-lg">Tournament not found.</p>
+      <a href="tournaments.html" class="mt-3 inline-block text-amber-400 hover:underline text-sm">Back to Tournaments →</a>
+    </div>
+
+    <div x-show="!loading && tournament">
+      <div class="mb-5">
+        <a href="tournaments.html" class="text-slate-500 hover:text-amber-400 text-sm transition-colors">← Tournaments</a>
+        <h1 class="text-2xl font-bold text-amber-400 mt-2" x-text="tournament ? tournament.name : ''"></h1>
+        <p class="text-sm text-slate-400" x-text="formatDate(tournament ? tournament.date : null)"></p>
+      </div>
+
+      <div x-show="tournament && tournament.status === 'open'"
+        class="bg-amber-950 border border-amber-700 rounded-xl p-3 mb-4 text-amber-300 text-sm">
+        ⏳ Results are preliminary — tournament is still open.
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 mb-5">
+        <div class="bg-navy-800 border border-navy-700 rounded-xl p-3 text-center">
+          <div class="text-slate-400 text-xs mb-1">Teams</div>
+          <div class="text-white font-bold text-lg" x-text="ranked.length"></div>
+        </div>
+        <div class="bg-navy-800 border border-navy-700 rounded-xl p-3 text-center">
+          <div class="text-slate-400 text-xs mb-1">Fish Weighed</div>
+          <div class="text-white font-bold text-lg" x-text="totalFishWeighed"></div>
+        </div>
+        <div class="bg-navy-800 border border-navy-700 rounded-xl p-3 text-center">
+          <div class="text-slate-400 text-xs mb-1">Total Weight</div>
+          <div class="text-white font-bold text-lg" x-text="totalTournamentWeight.toFixed(2) + ' lbs'"></div>
+        </div>
+      </div>
+
+      <div x-show="bigFishWinner" class="bg-amber-950 border border-amber-600 rounded-xl p-4 mb-5 flex items-center gap-4">
+        <span class="text-5xl">🐟</span>
+        <div>
+          <div class="text-amber-400 font-bold text-xs uppercase tracking-wider mb-0.5">Big Bass Winner</div>
+          <div class="text-white font-bold text-xl" x-text="bigFishWinner ? bigFishWinner.teamName : ''"></div>
+          <div class="text-amber-300 font-black text-2xl mt-0.5"
+            x-text="bigFishWinner ? (bigFishWinner.bigBassLbs !== undefined ? bigFishWinner.bigBassLbs + ' lb ' + bigFishWinner.bigBassOz + ' oz' : bigFishWinner.bigFish.toFixed(2) + ' lbs') : ''"></div>
+        </div>
+      </div>
+
+      <!-- Payouts (admin only) -->
+      <div x-show="isAdmin && ranked.filter(r => r.weighin).length >= 1" class="bg-navy-800 border border-navy-700 rounded-xl p-4 mb-5">
+        <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-3">💰 Prize Payouts</h3>
+        <div class="text-xs text-slate-500 mb-3">
+          <span x-text="weighedInCount + ' team' + (weighedInCount !== 1 ? 's' : '') + ' × $20 = $' + totalPot.toFixed(2)"></span>
+        </div>
+        <div class="space-y-2">
+          <template x-if="ranked[0] && ranked[0].weighin">
+            <div class="flex items-center justify-between p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div>
+                <div class="text-xs text-amber-400 font-semibold">1st Place</div>
+                <div class="text-white font-bold text-sm" x-text="ranked[0].teamName"></div>
+              </div>
+              <div class="text-amber-400 font-black text-lg" x-text="'$' + (totalPot * 0.5).toFixed(2)"></div>
+            </div>
+          </template>
+          <template x-if="ranked[1] && ranked[1].weighin">
+            <div class="flex items-center justify-between p-2 bg-slate-600/20 border border-slate-600/30 rounded-lg">
+              <div>
+                <div class="text-xs text-slate-400 font-semibold">2nd Place</div>
+                <div class="text-white font-bold text-sm" x-text="ranked[1].teamName"></div>
+              </div>
+              <div class="text-slate-300 font-black text-lg" x-text="'$' + (totalPot * 0.3).toFixed(2)"></div>
+            </div>
+          </template>
+          <template x-if="ranked[2] && ranked[2].weighin">
+            <div class="flex items-center justify-between p-2 bg-orange-700/20 border border-orange-700/30 rounded-lg">
+              <div>
+                <div class="text-xs text-orange-400 font-semibold">3rd Place</div>
+                <div class="text-white font-bold text-sm" x-text="ranked[2].teamName"></div>
+              </div>
+              <div class="text-orange-300 font-black text-lg" x-text="'$' + (totalPot * 0.2).toFixed(2)"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div x-show="ranked.filter(r => r.weighin).length > 0" class="space-y-2 mb-4">
+        <template x-for="(entry, i) in ranked.filter(r => r.weighin)" :key="entry.teamId">
+          <div class="rounded-xl p-4 border"
+            :class="entry.rank === '1'
+              ? 'bg-amber-500/10 border-amber-500/40'
+              : 'bg-navy-800 border-navy-700'">
+            <div class="flex items-center justify-between gap-3">
+              <!-- Rank + team -->
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="flex-shrink-0 w-12 text-center">
+                  <span class="font-black text-2xl"
+                    :class="entry.rank === '1' ? 'text-amber-400' : 'text-slate-400'"
+                    x-text="entry.rank"></span>
+                  <div x-show="entry.rank === '1'" class="text-xl leading-none">🏆</div>
+                </div>
+                <div class="min-w-0">
+                  <div class="font-bold text-white text-lg leading-tight truncate" x-text="entry.teamName"></div>
+                  <div class="text-slate-500 text-sm" x-text="entry.anglers"></div>
+                </div>
+              </div>
+              <!-- Total weight -->
+              <div class="text-right flex-shrink-0">
+                <div class="font-black text-3xl leading-none"
+                  :class="entry.rank === '1' ? 'text-amber-400' : 'text-white'"
+                  x-text="entry.weighin.totalLbs !== undefined ? entry.weighin.totalLbs + ' lb' : entry.weighin.totalWeight.toFixed(2)"></div>
+                <div class="font-bold text-xl leading-none mt-0.5"
+                  :class="entry.rank === '1' ? 'text-amber-500' : 'text-slate-300'"
+                  x-text="entry.weighin.totalLbs !== undefined ? entry.weighin.totalOz + ' oz' : ''"></div>
+              </div>
+            </div>
+            <!-- Big bass row -->
+            <div x-show="entry.weighin.bigFish > 0"
+              class="mt-3 pt-3 border-t flex items-center justify-between"
+              :class="entry.rank === '1' ? 'border-amber-500/20' : 'border-navy-700'">
+              <span class="text-slate-400 text-sm">🐟 Big Bass</span>
+              <span class="font-bold text-lg"
+                :class="entry.isBigFish ? 'text-amber-400' : 'text-slate-300'"
+                x-text="entry.weighin.bigBassLbs !== undefined
+                  ? entry.weighin.bigBassLbs + ' lb ' + entry.weighin.bigBassOz + ' oz'
+                  : entry.weighin.bigFish.toFixed(2) + ' lbs'"></span>
+            </div>
+            <!-- Penalty -->
+            <div x-show="entry.weighin.penaltyCount > 0"
+              class="mt-1 text-red-400 text-sm"
+              x-text="'⚠️ ' + entry.weighin.penaltyCount + ' dead fish penalt' + (entry.weighin.penaltyCount > 1 ? 'ies' : 'y')"></div>
+          </div>
+        </template>
+      </div>
+
+      <div x-show="ranked.filter(r => !r.weighin).length > 0">
+        <h3 class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2 px-1">Did Not Weigh</h3>
+        <div class="space-y-1">
+          <template x-for="entry in ranked.filter(r => !r.weighin)" :key="entry.teamId">
+            <div class="bg-navy-800/50 border border-navy-700/50 rounded-lg px-4 py-2.5 flex items-center justify-between">
+              <span class="text-slate-400 text-sm" x-text="entry.teamName"></span>
+              <span class="text-slate-600 text-xs font-semibold">DNW</span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      const db = firebase.firestore();
+
+      function assignRanks(sorted) {
+        let prev = null, prevRank = 1;
+        return sorted.map((entry, i) => {
+          if (i === 0) { prev = entry.totalWeight; prevRank = 1; return { ...entry, rank: '1' }; }
+          if (entry.totalWeight === prev) return { ...entry, rank: 'T-' + prevRank };
+          prevRank = i + 1; prev = entry.totalWeight;
+          return { ...entry, rank: String(i + 1) };
+        });
+      }
+
+      Alpine.data('tournamentResults', () => ({
+        tournamentId: null,
+        tournament: null,
+        ranked: [],
+        bigFishWinner: null,
+        isAdmin: false,
+        loading: true,
+
+        async init() {
+          firebase.auth().onAuthStateChanged(user => { this.isAdmin = !!user; });
+
+          const params = new URLSearchParams(window.location.search);
+          this.tournamentId = params.get('id');
+          if (!this.tournamentId) { this.loading = false; return; }
+
+          const [tSnap, teamsSnap, weighinsSnap] = await Promise.all([
+            db.collection('tournaments').doc(this.tournamentId).get(),
+            db.collection('teams').get(),
+            db.collection('weighins').where('tournamentId', '==', this.tournamentId).get()
+          ]);
+
+          if (!tSnap.exists) { this.loading = false; return; }
+          this.tournament = { id: tSnap.id, ...tSnap.data() };
+          const teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const weighins = weighinsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          this.buildRanked(teams, weighins);
+          this.loading = false;
+        },
+
+        buildRanked(teams, weighins) {
+          const weighinByTeam = {};
+          weighins.forEach(w => { weighinByTeam[w.teamId] = w; });
+
+          const withWeighin = teams.filter(t => weighinByTeam[t.id]).map(t => ({
+            teamId: t.id, teamName: t.teamName,
+            anglers: `${t.angler1.name} & ${t.angler2.name}`,
+            weighin: weighinByTeam[t.id],
+            totalWeight: weighinByTeam[t.id].totalWeight || 0,
+            isBigFish: false
+          })).sort((a, b) => b.totalWeight - a.totalWeight);
+
+          const ranked = assignRanks(withWeighin);
+          const maxBigFish = Math.max(0, ...weighins.map(w => w.bigFish || 0));
+          if (maxBigFish > 0) {
+            ranked.forEach(e => { if (e.weighin && e.weighin.bigFish === maxBigFish) e.isBigFish = true; });
+            const winner = ranked.find(e => e.isBigFish);
+            if (winner) this.bigFishWinner = {
+              teamName: winner.teamName,
+              bigFish: maxBigFish,
+              bigBassLbs: winner.weighin.bigBassLbs,
+              bigBassOz: winner.weighin.bigBassOz
+            };
+          }
+
+          const dnw = teams.filter(t => !weighinByTeam[t.id]).map(t => ({
+            teamId: t.id, teamName: t.teamName,
+            anglers: `${t.angler1.name} & ${t.angler2.name}`,
+            weighin: null, rank: 'DNW'
+          }));
+          this.ranked = [...ranked, ...dnw];
+        },
+
+        formatDate(ts) {
+          if (!ts) return '';
+          const d = ts.toDate ? ts.toDate() : new Date(ts);
+          return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        },
+
+        get totalFishWeighed() {
+          return this.ranked.filter(r => r.weighin)
+            .reduce((s, r) => s + (r.weighin.fish || []).filter(f => f && f > 0).length, 0);
+        },
+        get totalTournamentWeight() {
+          return this.ranked.filter(r => r.weighin).reduce((s, r) => s + (r.weighin.totalWeight || 0), 0);
+        },
+        get weighedInCount() {
+          return this.ranked.filter(r => r.weighin).length;
+        },
+        get totalPot() {
+          return this.weighedInCount * 20;
+        }
+      }));
+    });
+  </script>
+</body>
+</html>

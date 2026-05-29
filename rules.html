@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — League Rules</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <a href="index.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Home</a>
+  </nav>
+
+  <main class="p-4 max-w-2xl mx-auto">
+
+    <div class="pt-4 mb-6">
+      <h1 class="text-2xl font-bold text-amber-400">League Rules</h1>
+    </div>
+
+    <!-- Tournament Rules -->
+    <div class="bg-navy-800 border border-navy-700 rounded-xl p-5 mb-4">
+      <h2 class="text-base font-bold text-amber-400 uppercase tracking-wider mb-4">Tournament Rules</h2>
+      <ol class="space-y-3 list-decimal list-inside">
+        <li class="text-slate-300 leading-relaxed">All live wells must be checked before the tournament starts.</li>
+        <li class="text-slate-300 leading-relaxed">All boats <strong class="text-white">MUST</strong> pass by the start boat before heading to the fishing area.</li>
+        <li class="text-slate-300 leading-relaxed">No live bait. Artificial lures only.</li>
+        <li class="text-slate-300 leading-relaxed">Culling must be done before leaving the water. The courtesy bump process allows handlers to check fish on an official board before weighing. Once weigh-in staff takes possession, everything becomes official. You can no longer handle/touch your fish until given back to you. Short fish penalties apply.</li>
+        <li class="text-slate-300 leading-relaxed">Maximum <strong class="text-white">five bass</strong> at weigh-in. Exceeding this results in automatic disqualification.</li>
+        <li class="text-slate-300 leading-relaxed">ALL fish MUST be transported to the weigh-in scales in a bag with adequate water and returned to the lake immediately after weigh-in. Bass must be handled carefully; rough treatment is prohibited.</li>
+        <li class="text-slate-300 leading-relaxed">A 100-foot perimeter must be allowed to other boaters. Respect other anglers' space on the water.</li>
+        <li class="text-slate-300 leading-relaxed">Standings are determined by total weight.</li>
+        <li class="text-slate-300 leading-relaxed">Ties are broken by the heaviest individual bass.</li>
+        <li class="text-slate-300 leading-relaxed">Competitors must follow all state and local fishing laws. Violations result in disqualification.</li>
+        <li class="text-slate-300 leading-relaxed">No pre-tournament fishing allowed on event day.</li>
+      </ol>
+    </div>
+
+    <!-- Penalties -->
+    <div class="bg-navy-800 border border-red-900/50 rounded-xl p-5 mb-4">
+      <h2 class="text-base font-bold text-red-400 uppercase tracking-wider mb-4">⚠️ Penalties</h2>
+      <div class="space-y-3">
+        <div class="flex items-start gap-3 p-3 bg-red-950/30 rounded-lg border border-red-900/30">
+          <span class="text-red-400 text-lg flex-shrink-0">🐟</span>
+          <div>
+            <div class="text-white font-semibold">Dead Fish</div>
+            <div class="text-slate-400 text-sm">Half-pound deduction per fish</div>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-3 bg-red-950/30 rounded-lg border border-red-900/30">
+          <span class="text-red-400 text-lg flex-shrink-0">🚤</span>
+          <div>
+            <div class="text-white font-semibold">Improper Transport</div>
+            <div class="text-slate-400 text-sm">Half-pound deduction per fish</div>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-3 bg-red-950/30 rounded-lg border border-red-900/30">
+          <span class="text-red-400 text-lg flex-shrink-0">📏</span>
+          <div>
+            <div class="text-white font-semibold">Short Fish</div>
+            <div class="text-slate-400 text-sm">Disqualification of the undersized fish plus removal of heaviest bass weight</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Classic Qualification -->
+    <div class="bg-navy-800 border border-navy-700 rounded-xl p-5 mb-6">
+      <h2 class="text-base font-bold text-amber-400 uppercase tracking-wider mb-4">🏆 Classic Tournament Qualification</h2>
+      <ul class="space-y-3">
+        <li class="flex items-start gap-2 text-slate-300 leading-relaxed">
+          <span class="text-amber-500 mt-1 flex-shrink-0">•</span>
+          Top 10 points-qualified teams plus two wild-card teams qualify (directors excluded).
+        </li>
+        <li class="flex items-start gap-2 text-slate-300 leading-relaxed">
+          <span class="text-amber-500 mt-1 flex-shrink-0">•</span>
+          A minimum of <strong class="text-white">eight regular season tournaments</strong> is required to qualify.
+        </li>
+        <li class="flex items-start gap-2 text-slate-300 leading-relaxed">
+          <span class="text-amber-500 mt-1 flex-shrink-0">•</span>
+          No substitutions are allowed in the Classic.
+        </li>
+        <li class="flex items-start gap-2 text-slate-300 leading-relaxed">
+          <span class="text-amber-500 mt-1 flex-shrink-0">•</span>
+          Wild cards are determined by drawing from remaining teams after the top 10 are finalized.
+        </li>
+      </ul>
+    </div>
+
+  </main>
+</body>
+</html>

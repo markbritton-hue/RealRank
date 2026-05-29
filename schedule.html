@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — Tournament Schedule</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+
+  <script src="./firebase-init.js"></script>
+
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <a href="index.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Home</a>
+  </nav>
+
+  <main class="p-4 max-w-2xl mx-auto" x-data="schedulePage" x-init="init()">
+
+    <div class="pt-4 mb-6">
+      <h1 class="text-2xl font-bold text-amber-400">Tournament Schedule</h1>
+    </div>
+
+    <div x-show="loading" class="flex justify-center py-12">
+      <div class="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div x-show="!loading && tournaments.length === 0" class="text-center py-16 text-slate-400">
+      <div class="text-5xl mb-4">🏆</div>
+      <p class="text-lg">No tournaments yet.</p>
+    </div>
+
+    <div x-show="!loading" class="space-y-3">
+      <template x-for="t in tournaments" :key="t.id">
+        <div class="border rounded-xl p-4 transition-colors"
+          :class="t.status === 'open' ? 'bg-forest-700/20 border-forest-500/50' : 'bg-navy-800 border-navy-700'">
+
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-white text-lg" x-text="t.name"></span>
+                <span x-show="t.status === 'open'"
+                  class="flex items-center gap-1 text-xs bg-forest-600 text-forest-300 font-bold px-2.5 py-1 rounded-full">
+                  <span class="w-1.5 h-1.5 rounded-full bg-forest-400 animate-pulse"></span> ACTIVE
+                </span>
+              </div>
+              <div class="text-sm text-slate-400 mt-0.5" x-text="formatDate(t.date)"></div>
+              <div x-show="t.locationName" class="text-xs text-slate-500 mt-0.5" x-text="t.locationName"></div>
+
+              <!-- Info chips -->
+              <div class="flex gap-2 mt-2 flex-wrap">
+                <span x-show="t.startTime" class="text-xs bg-navy-700 border border-navy-600 text-slate-300 px-2 py-0.5 rounded-full">
+                  🕐 Start <span x-text="formatTime(t.startTime)"></span>
+                </span>
+                <span x-show="t.noWakeTime" class="text-xs bg-navy-700 border border-navy-600 text-slate-300 px-2 py-0.5 rounded-full">
+                  ⚓ No wake <span x-text="formatTime(t.noWakeTime)"></span>
+                </span>
+                <span x-show="t.sizeLimit" class="text-xs bg-navy-700 border border-navy-600 text-slate-300 px-2 py-0.5 rounded-full">
+                  📏 <span x-text="t.sizeLimit"></span>" min
+                </span>
+              </div>
+            </div>
+
+            <!-- Map link -->
+            <a x-show="t.mapsLink" :href="t.mapsLink" target="_blank"
+              class="bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-500/40 hover:border-amber-400 transition-colors flex-shrink-0">
+              📍 Map
+            </a>
+          </div>
+
+          <!-- View results button -->
+          <div class="mt-3">
+            <a :href="`results.html?id=${t.id}`"
+              class="inline-block bg-navy-700 hover:bg-navy-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-navy-600">
+              View Results →
+            </a>
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      const db = firebase.firestore();
+
+      Alpine.data('schedulePage', () => ({
+        tournaments: [],
+        loading: true,
+
+        init() {
+          db.collection('tournaments').orderBy('date', 'desc').onSnapshot(snap => {
+            const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            this.tournaments = [
+              ...all.filter(t => t.status === 'open'),
+              ...all.filter(t => t.status !== 'open')
+            ];
+            this.loading = false;
+          });
+        },
+
+        formatDate(ts) {
+          if (!ts) return '—';
+          const d = ts.toDate ? ts.toDate() : new Date(ts);
+          return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        },
+
+        formatTime(t) {
+          if (!t) return '';
+          const [h, m] = t.split(':').map(Number);
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+        }
+      }));
+    });
+  </script>
+</body>
+</html>

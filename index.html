@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — Season Standings</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+
+  <script src="./firebase-init.js"></script>
+  <script>
+    firebase.auth().onAuthStateChanged(function(user) {
+      document.getElementById('btnAdminLogin').style.display = user ? 'none' : '';
+      document.getElementById('btnSignOut').style.display = user ? '' : 'none';
+    });
+  </script>
+
+  <!-- Nav -->
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 sm:px-6 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <div>
+      <a id="btnAdminLogin" href="login.html"
+        class="bg-navy-700 hover:bg-navy-600 text-slate-400 hover:text-amber-400 px-4 py-2 rounded-lg text-sm font-semibold border border-navy-600 hover:border-amber-400 transition-colors">
+        Admin Login
+      </a>
+      <button id="btnSignOut" style="display:none"
+        onclick="firebase.auth().signOut().then(() => window.location.reload())"
+        class="bg-red-800 hover:bg-red-700 text-white px-5 py-2 rounded-lg font-bold text-sm border border-red-700 transition-colors">
+        🚪 Sign Out
+      </button>
+    </div>
+  </nav>
+
+  <main class="p-4 sm:p-6 max-w-3xl mx-auto" x-data="seasonBoard" x-init="init()">
+
+    <div class="text-center pt-5 pb-4">
+      <div class="text-4xl mb-1">🎣</div>
+      <h1 class="text-3xl sm:text-4xl font-black text-amber-400 tracking-tight">ReelRank</h1>
+      <p class="text-slate-400 mt-1 text-xs sm:text-sm" x-text="seasonSummary"></p>
+    </div>
+
+    <!-- Today's Tournament banner -->
+    <div x-show="todayTournament" class="mb-5">
+      <a :href="`results.html?id=${todayTournament.id}`"
+        class="block bg-amber-500/15 border border-amber-500/50 rounded-2xl p-6 hover:bg-amber-500/20 transition-colors">
+        <div class="flex items-start gap-4">
+          <span class="text-5xl flex-shrink-0">🎣</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-amber-400 font-bold uppercase tracking-wider mb-1">Tournament Today</div>
+            <div class="text-white font-black text-3xl leading-tight mb-1" x-text="todayTournament ? todayTournament.name : ''"></div>
+            <div class="text-slate-300 text-lg mb-2" x-text="todayTournament ? (todayTournament.locationName || '') : ''"></div>
+            <div class="flex gap-4 mt-2 flex-wrap">
+              <span x-show="todayTournament && todayTournament.startTime"
+                class="text-sm text-amber-300 font-semibold">🕐 Start <span x-text="todayTournament ? formatTime(todayTournament.startTime) : ''"></span></span>
+              <span x-show="todayTournament && todayTournament.noWakeTime"
+                class="text-sm text-slate-300 font-semibold">⚓ No wake <span x-text="todayTournament ? formatTime(todayTournament.noWakeTime) : ''"></span></span>
+              <span x-show="todayTournament && todayTournament.sizeLimit"
+                class="text-sm text-slate-300 font-semibold">📏 <span x-text="todayTournament ? todayTournament.sizeLimit : ''"></span>" min</span>
+            </div>
+          </div>
+          <span class="text-amber-400 text-2xl flex-shrink-0 mt-1">→</span>
+        </div>
+      </a>
+    </div>
+
+    <!-- Quick Nav Cards -->
+    <div class="grid grid-cols-2 gap-2 mb-6">
+
+      <!-- Tournaments — always visible (read-only) -->
+      <a href="schedule.html"
+        class="bg-navy-800 border border-navy-700 hover:border-amber-500/50 hover:bg-navy-700 rounded-xl p-4 flex flex-col items-center gap-2 transition-all group">
+        <span class="text-3xl">🎣</span>
+        <div class="text-center">
+          <div class="text-white font-bold text-sm group-hover:text-amber-400 transition-colors">Tournaments</div>
+          <div class="text-slate-500 text-xs mt-0.5">Schedule &amp; info</div>
+        </div>
+      </a>
+
+      <!-- Results — always visible -->
+      <a :href="activeTournamentId ? `results.html?id=${activeTournamentId}` : 'results.html'"
+        class="bg-navy-800 border border-navy-700 hover:border-forest-500/50 hover:bg-navy-700 rounded-xl p-4 flex flex-col items-center gap-2 transition-all group">
+        <span class="text-3xl">📊</span>
+        <div class="text-center">
+          <div class="text-white font-bold text-sm group-hover:text-forest-400 transition-colors">Results</div>
+          <div class="text-white font-bold text-base mt-1" x-text="activeTournamentId ? activeTournamentName : 'Tournament results'"></div>
+          <div x-show="!activeTournamentId" class="text-slate-500 text-xs mt-0.5">No active tournament</div>
+        </div>
+      </a>
+
+      <!-- Rules — always visible -->
+      <a href="rules.html"
+        class="bg-navy-800 border border-navy-700 hover:border-amber-500/50 hover:bg-navy-700 rounded-xl p-4 flex flex-col items-center gap-2 transition-all group">
+        <span class="text-3xl">📋</span>
+        <div class="text-center">
+          <div class="text-white font-bold text-sm group-hover:text-amber-400 transition-colors">Rules</div>
+          <div class="text-slate-500 text-xs mt-0.5">League rules &amp; penalties</div>
+        </div>
+      </a>
+
+      <!-- Standings — always visible -->
+      <a href="#standings"
+        class="bg-navy-800 border border-navy-700 hover:border-amber-500/50 hover:bg-navy-700 rounded-xl p-4 flex flex-col items-center gap-2 transition-all group">
+        <span class="text-3xl">🏆</span>
+        <div class="text-center">
+          <div class="text-white font-bold text-sm group-hover:text-amber-400 transition-colors">Standings</div>
+          <div class="text-slate-500 text-xs mt-0.5" x-text="seasonSummary"></div>
+        </div>
+      </a>
+
+      <!-- Admin only: Weigh-In -->
+      <a x-show="authReady && isAdmin"
+        :href="activeTournamentId ? `weigh-in.html?tournament=${activeTournamentId}` : 'tournaments.html'"
+        class="bg-navy-800 border border-navy-700 hover:border-forest-500/50 hover:bg-navy-700 rounded-xl p-4 flex flex-col items-center gap-2 transition-all group">
+        <span class="text-3xl">⚖️</span>
+        <div class="text-center">
+          <div class="text-white font-bold text-sm group-hover:text-forest-400 transition-colors">Weigh-In</div>
+          <div class="text-slate-500 text-xs mt-0.5" x-text="activeTournamentId ? activeTournamentName : 'No active tournament'"></div>
+        </div>
+      </a>
+
+      <!-- Admin only: Manage -->
+      <a x-show="authReady && isAdmin" href="manage.html"
+        class="bg-navy-800 border border-navy-700 hover:border-amber-500/50 hover:bg-navy-700 rounded-xl p-4 flex flex-col items-center gap-2 transition-all group">
+        <span class="text-3xl">⚙️</span>
+        <div class="text-center">
+          <div class="text-white font-bold text-sm group-hover:text-amber-400 transition-colors">Manage</div>
+          <div class="text-slate-500 text-xs mt-0.5">Tournaments &amp; teams</div>
+        </div>
+      </a>
+
+    </div>
+
+    <div id="standings" class="flex items-center gap-3 mb-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-amber-400">Season Standings</h2>
+      <div class="flex-1 h-px bg-navy-700"></div>
+    </div>
+
+    <div x-show="loading" class="flex justify-center py-12">
+      <div class="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div x-show="!loading">
+      <div class="flex items-center justify-center mb-5">
+        <div class="bg-navy-800 border border-navy-700 rounded-xl p-1 flex gap-1">
+          <button @click="sortMode = 'weight'; buildLeaderboard()"
+            :class="sortMode === 'weight' ? 'bg-amber-500 text-navy-900 font-bold' : 'text-slate-400 hover:text-white'"
+            class="px-4 py-1.5 rounded-lg text-sm transition-all">Total Weight</button>
+          <button @click="sortMode = 'points'; buildLeaderboard()"
+            :class="sortMode === 'points' ? 'bg-amber-500 text-navy-900 font-bold' : 'text-slate-400 hover:text-white'"
+            class="px-4 py-1.5 rounded-lg text-sm transition-all">Points</button>
+        </div>
+      </div>
+
+      <div x-show="leaderboard.length === 0" class="text-center py-16 text-slate-400">
+        <div class="text-5xl mb-4">🎣</div>
+        <p class="text-lg">No data yet.</p>
+        <div class="flex gap-4 justify-center mt-4">
+          <a href="teams.html" class="text-amber-400 hover:underline text-sm">Add teams →</a>
+          <a href="tournaments.html" class="text-amber-400 hover:underline text-sm">Create tournament →</a>
+        </div>
+      </div>
+
+      <!-- Podium -->
+      <div x-show="leaderboard.length >= 3" class="flex items-end justify-center gap-3 mb-6">
+        <template x-if="leaderboard.length > 1">
+          <div class="flex-1 text-center">
+            <div class="bg-slate-600/30 border border-slate-600/50 rounded-t-xl pt-4 pb-3 px-2">
+              <div class="text-slate-300 text-2xl mb-1">🥈</div>
+              <div class="text-slate-200 font-semibold text-sm leading-tight" x-text="leaderboard[1]?.teamName"></div>
+              <div class="text-slate-400 font-mono text-sm mt-1"
+                x-text="sortMode === 'weight' ? leaderboard[1]?.totalWeight.toFixed(2) + ' lbs' : leaderboard[1]?.totalPoints.toFixed(1) + ' pts'"></div>
+            </div>
+            <div class="bg-slate-700/50 h-8 rounded-b-sm"></div>
+          </div>
+        </template>
+        <template x-if="leaderboard.length > 0">
+          <div class="flex-1 text-center">
+            <div class="bg-amber-500/20 border border-amber-500/40 rounded-t-xl pt-5 pb-3 px-2">
+              <div class="text-amber-400 text-3xl mb-1">🏆</div>
+              <div class="text-white font-bold text-sm leading-tight" x-text="leaderboard[0]?.teamName"></div>
+              <div class="text-amber-400 font-mono font-bold text-sm mt-1"
+                x-text="sortMode === 'weight' ? leaderboard[0]?.totalWeight.toFixed(2) + ' lbs' : leaderboard[0]?.totalPoints.toFixed(1) + ' pts'"></div>
+            </div>
+            <div class="bg-amber-600/30 h-12 rounded-b-sm"></div>
+          </div>
+        </template>
+        <template x-if="leaderboard.length > 2">
+          <div class="flex-1 text-center">
+            <div class="bg-orange-700/20 border border-orange-700/30 rounded-t-xl pt-3 pb-3 px-2">
+              <div class="text-orange-400 text-xl mb-1">🥉</div>
+              <div class="text-slate-300 font-semibold text-sm leading-tight" x-text="leaderboard[2]?.teamName"></div>
+              <div class="text-slate-400 font-mono text-sm mt-1"
+                x-text="sortMode === 'weight' ? leaderboard[2]?.totalWeight.toFixed(2) + ' lbs' : leaderboard[2]?.totalPoints.toFixed(1) + ' pts'"></div>
+            </div>
+            <div class="bg-orange-700/20 h-5 rounded-b-sm"></div>
+          </div>
+        </template>
+      </div>
+
+      <div x-show="leaderboard.length > 0" class="space-y-2">
+        <template x-for="(entry, i) in leaderboard" :key="entry.team.id">
+          <div class="bg-navy-800 border border-navy-700 rounded-xl overflow-hidden">
+
+            <!-- Main row — tap to expand -->
+            <button @click="entry.expanded = !entry.expanded"
+              class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-navy-700/50 transition-colors">
+
+              <!-- Rank -->
+              <div class="w-10 flex-shrink-0 text-center">
+                <span class="font-black text-lg"
+                  :class="entry.rank === '1' ? 'text-amber-400' : 'text-slate-400'"
+                  x-text="entry.rank"></span>
+              </div>
+
+              <!-- Team name -->
+              <div class="flex-1 min-w-0">
+                <div class="font-bold text-white text-base leading-tight" x-text="entry.team.teamName"></div>
+                <div class="text-slate-500 text-xs mt-0.5"
+                  x-text="entry.team.angler1.name + ' & ' + entry.team.angler2.name"></div>
+              </div>
+
+              <!-- Stats -->
+              <div class="flex items-center gap-4 flex-shrink-0">
+                <div class="text-right hidden sm:block">
+                  <div class="text-xs text-slate-500">Events</div>
+                  <div class="text-slate-300 font-semibold text-sm" x-text="entry.tournamentsEntered"></div>
+                </div>
+                <div class="text-right hidden sm:block">
+                  <div class="text-xs text-slate-500">Wins</div>
+                  <div class="text-slate-300 font-semibold text-sm" x-text="entry.wins || '—'"></div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs text-slate-500" x-text="sortMode === 'weight' ? 'Total' : 'Pts'"></div>
+                  <div class="font-black text-base"
+                    :class="entry.rank === '1' ? 'text-amber-400' : 'text-white'"
+                    x-text="sortMode === 'weight' ? entry.totalWeight.toFixed(2) : entry.totalPoints.toFixed(1)"></div>
+                </div>
+                <span class="text-slate-500 text-sm" x-text="entry.expanded ? '▲' : '▼'"></span>
+              </div>
+            </button>
+
+            <!-- Expanded tournament breakdown -->
+            <div x-show="entry.expanded" x-transition class="border-t border-navy-700">
+              <div class="px-4 py-2 bg-navy-900/50">
+                <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Tournament Breakdown</div>
+                <template x-for="t in tournaments" :key="t.id">
+                  <div class="flex items-center justify-between py-2 border-b border-navy-700/40 last:border-0">
+                    <div class="min-w-0">
+                      <div class="text-sm text-slate-300 font-semibold truncate" x-text="t.name"></div>
+                      <div class="text-xs text-slate-600" x-text="formatDate(t.date)"></div>
+                    </div>
+                    <div class="flex items-center gap-4 flex-shrink-0 ml-3">
+                      <template x-if="getTournamentWeighin(entry.team.id, t.id)">
+                        <div class="text-right">
+                          <div class="text-sm font-bold text-forest-400"
+                            x-text="getTournamentWeighinWeight(entry.team.id, t.id)"></div>
+                          <div class="text-xs text-amber-400"
+                            x-show="getTournamentWeighin(entry.team.id, t.id) && getTournamentWeighin(entry.team.id, t.id).bigFish > 0"
+                            x-text="getTournamentWeighinBigBass(entry.team.id, t.id)"></div>
+                          <div class="text-xs text-slate-500"
+                            x-text="'🎣 ' + (getTournamentWeighin(entry.team.id, t.id).fishCount || 0) + ' fish'"></div>
+                        </div>
+                      </template>
+                      <template x-if="!getTournamentWeighin(entry.team.id, t.id)">
+                        <span class="text-xs text-slate-600 italic">DNW</span>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+          </div>
+        </template>
+      </div>
+
+      <div x-show="hasOpenTournaments" class="mt-3 text-center text-xs text-slate-500">
+        ⏳ Standings include results from open tournaments.
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      const db = firebase.firestore();
+
+      function buildSeasonLeaderboard(teams, weighins, tournaments, mode) {
+        const byTournament = {};
+        weighins.forEach(w => {
+          if (!byTournament[w.tournamentId]) byTournament[w.tournamentId] = [];
+          byTournament[w.tournamentId].push(w);
+        });
+
+        const teamPoints = {};
+        teams.forEach(t => {
+          teamPoints[t.id] = { team: t, totalWeight: 0, totalPoints: 0, wins: 0, bigFishWins: 0, tournamentsEntered: 0 };
+        });
+
+        tournaments.forEach(tournament => {
+          const tWeighins = (byTournament[tournament.id] || []).sort((a, b) => b.totalWeight - a.totalWeight);
+          const n = tWeighins.length;
+          const maxBigFish = tWeighins.reduce((max, w) => Math.max(max, w.bigFish || 0), 0);
+
+          tWeighins.forEach((w, idx) => {
+            if (!teamPoints[w.teamId]) return;
+            teamPoints[w.teamId].totalWeight += w.totalWeight || 0;
+            teamPoints[w.teamId].tournamentsEntered += 1;
+            const firstTiedIdx = tWeighins.findIndex(x => x.totalWeight === w.totalWeight);
+            teamPoints[w.teamId].totalPoints += n - firstTiedIdx;
+            if (firstTiedIdx === 0 || tWeighins[0].totalWeight === w.totalWeight) teamPoints[w.teamId].wins += 1;
+            if (maxBigFish > 0 && w.bigFish === maxBigFish) teamPoints[w.teamId].bigFishWins += 1;
+          });
+        });
+
+        const sortKey = mode === 'points' ? 'totalPoints' : 'totalWeight';
+        const list = Object.values(teamPoints).sort((a, b) => {
+          if (b[sortKey] !== a[sortKey]) return b[sortKey] - a[sortKey];
+          if (b.wins !== a.wins) return b.wins - a.wins;
+          return b.bigFishWins - a.bigFishWins;
+        });
+
+        let prevVal = null, prevRankLabel = '1';
+        return list.map((entry, i) => {
+          const val = entry[sortKey];
+          let rankLabel;
+          if (i === 0) { rankLabel = '1'; }
+          else if (val === prevVal) { rankLabel = 'T-' + prevRankLabel.replace('T-', ''); }
+          else { rankLabel = String(i + 1); prevRankLabel = rankLabel; }
+          prevVal = val;
+          return { ...entry, rank: rankLabel };
+        });
+      }
+
+      Alpine.data('seasonBoard', () => ({
+        teams: [],
+        tournaments: [],
+        weighins: [],
+        leaderboard: [],
+        sortMode: 'weight',
+        activeTournamentId: null,
+        activeTournamentName: '',
+        todayTournament: null,
+        isAdmin: false,
+        authReady: false,
+        loading: true,
+
+        async init() {
+          firebase.auth().onAuthStateChanged(user => {
+            this.isAdmin = !!user;
+            this.authReady = true;
+          });
+
+          const [teamsSnap, tournamentsSnap, weighinsSnap] = await Promise.all([
+            db.collection('teams').get(),
+            db.collection('tournaments').orderBy('date', 'asc').get(),
+            db.collection('weighins').get()
+          ]);
+          this.teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          this.tournaments = tournamentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          this.weighins = weighinsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          const active = this.tournaments
+            .filter(t => t.status === 'open')
+            .sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0))[0];
+          this.activeTournamentId = active ? active.id : null;
+          this.activeTournamentName = active ? active.name : '';
+
+          // Check for a tournament today
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          this.todayTournament = this.tournaments.find(t => {
+            if (!t.date) return false;
+            const d = t.date.toDate ? t.date.toDate() : new Date(t.date);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime() === today.getTime();
+          }) || null;
+
+          this.buildLeaderboard();
+          this.loading = false;
+        },
+
+        buildLeaderboard() {
+          this.leaderboard = buildSeasonLeaderboard(this.teams, this.weighins, this.tournaments, this.sortMode)
+            .map(e => ({ ...e, expanded: false }));
+        },
+
+        formatDate(ts) {
+          if (!ts) return '';
+          const d = ts.toDate ? ts.toDate() : new Date(ts);
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        },
+
+        formatTime(t) {
+          if (!t) return '';
+          const [h, m] = t.split(':').map(Number);
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+        },
+
+        getTournamentWeighin(teamId, tournamentId) {
+          return this.weighins.find(w => w.teamId === teamId && w.tournamentId === tournamentId) || null;
+        },
+
+        getTournamentWeighinWeight(teamId, tournamentId) {
+          const w = this.getTournamentWeighin(teamId, tournamentId);
+          if (!w) return '—';
+          if (w.totalLbs !== undefined) return `${w.totalLbs} lb ${w.totalOz} oz`;
+          return w.totalWeight ? w.totalWeight.toFixed(2) + ' lbs' : '—';
+        },
+
+        getTournamentWeighinBigBass(teamId, tournamentId) {
+          const w = this.getTournamentWeighin(teamId, tournamentId);
+          if (!w || !w.bigFish) return '';
+          if (w.bigBassLbs !== undefined) return `🐟 ${w.bigBassLbs} lb ${w.bigBassOz} oz`;
+          return `🐟 ${w.bigFish.toFixed(2)} lbs`;
+        },
+
+        get seasonSummary() {
+          const closed = this.tournaments.filter(t => t.status === 'closed').length;
+          const total = this.tournaments.length;
+          if (total === 0) return 'No tournaments yet';
+          return `${closed} of ${total} tournament${total !== 1 ? 's' : ''} completed`;
+        },
+
+        get hasOpenTournaments() {
+          return this.tournaments.some(t => t.status === 'open');
+        }
+      }));
+    });
+  </script>
+</body>
+</html>

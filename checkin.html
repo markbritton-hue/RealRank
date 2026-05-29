@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — Check-In</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+
+  <script src="./firebase-init.js"></script>
+  <script src="./auth-guard.js"></script>
+
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <div class="flex items-center gap-2">
+      <button onclick="history.back()" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Back</button>
+      <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')"
+        class="bg-navy-700 hover:bg-red-900 text-slate-400 hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold border border-navy-600 hover:border-red-800 transition-colors">
+        Sign Out
+      </button>
+    </div>
+  </nav>
+
+  <main class="p-4 max-w-lg mx-auto" x-data="checkInPage" x-init="init()">
+
+    <!-- No tournament -->
+    <div x-show="!tournamentId && !loading" class="text-center py-16 text-slate-400">
+      <div class="text-5xl mb-4">✅</div>
+      <p class="text-lg">No tournament selected.</p>
+      <a href="tournaments.html" class="mt-4 inline-block text-amber-400 hover:underline text-sm">Go to Tournaments →</a>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="flex justify-center py-12">
+      <div class="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div x-show="tournament && !loading">
+
+      <!-- Header -->
+      <div class="pt-4 mb-5">
+        <h1 class="text-2xl font-bold text-amber-400" x-text="tournament ? tournament.name : ''"></h1>
+        <p class="text-sm text-slate-400 mt-0.5" x-text="formatDate(tournament ? tournament.date : null)"></p>
+        <div class="flex items-center gap-3 mt-2">
+          <span class="text-xs text-slate-500" x-text="`${checkedInCount} of ${teams.length} teams checked in`"></span>
+          <div class="flex-1 h-1.5 bg-navy-700 rounded-full overflow-hidden">
+            <div class="h-full bg-amber-500 rounded-full transition-all"
+              :style="`width: ${teams.length ? (checkedInCount / teams.length * 100) : 0}%`"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team list -->
+      <div class="space-y-2">
+        <template x-for="team in sortedTeams" :key="team.id">
+          <div class="border rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+            :class="checkinMap[team.id] && checkinMap[team.id].startBoat
+              ? 'bg-red-950 border-red-700'
+              : checkinMap[team.id] ? 'bg-navy-800 border-amber-600/50' : 'bg-navy-800 border-navy-700'">
+            <div class="min-w-0 flex items-center gap-3">
+              <!-- Badge -->
+              <div class="w-16 h-16 rounded-xl flex items-center justify-center font-black text-3xl flex-shrink-0 transition-colors"
+                :class="checkinMap[team.id] && checkinMap[team.id].startBoat
+                  ? 'bg-red-600 text-white'
+                  : checkinMap[team.id] ? 'bg-amber-500 text-navy-900' : 'bg-navy-700 text-slate-500'">
+                <span x-show="checkinMap[team.id] && checkinMap[team.id].startBoat">🚤</span>
+                <span x-show="checkinMap[team.id] && !checkinMap[team.id].startBoat"
+                  x-text="checkinMap[team.id] ? checkinMap[team.id].boatNumber : ''"></span>
+                <span x-show="!checkinMap[team.id]" class="text-2xl">—</span>
+              </div>
+              <div>
+                <div class="font-bold text-base"
+                  :class="checkinMap[team.id] && checkinMap[team.id].startBoat ? 'text-red-300' : 'text-white'"
+                  x-text="team.teamName"></div>
+                <div class="text-sm text-slate-500" x-text="team.angler1.name + ' & ' + team.angler2.name"></div>
+                <div x-show="checkinMap[team.id]" class="flex items-center gap-2 mt-0.5">
+                  <span x-show="checkinMap[team.id] && checkinMap[team.id].startBoat"
+                    class="text-sm text-red-400 font-bold">🚤 Start Boat</span>
+                  <span x-show="checkinMap[team.id] && !checkinMap[team.id].startBoat"
+                    class="text-sm text-amber-400 font-semibold">✓ Checked in</span>
+                </div>
+              </div>
+            </div>
+            <button @click="openEntry(team)"
+              :class="checkinMap[team.id]
+                ? 'bg-navy-700 hover:bg-navy-600 text-slate-300 border-navy-600'
+                : 'bg-amber-500 hover:bg-amber-400 text-navy-900 border-amber-400'"
+              class="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-bold border transition-colors">
+              <span x-text="checkinMap[team.id] ? 'Edit' : 'Check In'"></span>
+            </button>
+          </div>
+        </template>
+      </div>
+
+      <div x-show="teams.length === 0 && !loading" class="text-center py-8 text-slate-500 text-sm">
+        No teams found. <a href="teams.html" class="text-amber-400 hover:underline">Add teams first →</a>
+      </div>
+    </div>
+
+    <!-- Entry Modal -->
+    <div x-show="showModal" x-transition @click="showModal = false"
+      class="fixed inset-0 bg-black/70 flex items-end justify-center z-50">
+      <div class="bg-navy-800 border-t border-navy-600 rounded-t-2xl p-5 w-full max-w-lg shadow-2xl" @click.stop>
+
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-lg font-bold text-white" x-text="activeTeam ? activeTeam.teamName : ''"></h2>
+            <p class="text-xs text-slate-400" x-text="activeTeam ? activeTeam.angler1.name + ' & ' + activeTeam.angler2.name : ''"></p>
+          </div>
+          <button @click="showModal = false" class="text-slate-400 hover:text-white text-2xl leading-none">×</button>
+        </div>
+
+        <!-- Boat number -->
+        <div class="bg-navy-900 border border-navy-700 rounded-xl p-4 mb-4">
+          <label class="block text-sm font-semibold text-slate-300 mb-3">🚤 Boat Number</label>
+          <input type="number" min="1" max="999" step="1" inputmode="numeric"
+            x-model.number="form.boatNumber" placeholder="—"
+            class="w-full bg-navy-800 border border-navy-600 rounded-xl px-4 py-4 text-white text-4xl font-black font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
+        </div>
+
+        <!-- Start Boat toggle -->
+        <div class="bg-navy-900 border border-navy-700 rounded-xl p-4 mb-3 flex items-center justify-between">
+          <div>
+            <div class="text-sm font-semibold text-slate-300">🚤 Start Boat</div>
+            <div class="text-xs text-slate-500 mt-0.5">This team goes out first</div>
+          </div>
+          <button @click="form.startBoat = !form.startBoat"
+            :class="form.startBoat ? 'bg-forest-500' : 'bg-navy-700'"
+            class="relative w-14 h-7 rounded-full transition-colors flex-shrink-0">
+            <span :class="form.startBoat ? 'left-8' : 'left-1'"
+              class="absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"></span>
+          </button>
+        </div>
+
+        <!-- Check-in toggle -->
+        <div class="bg-navy-900 border border-navy-700 rounded-xl p-4 mb-4 flex items-center justify-between">
+          <div>
+            <div class="text-sm font-semibold text-slate-300">Checked In</div>
+            <div class="text-xs text-slate-500 mt-0.5">Mark team as present &amp; ready</div>
+          </div>
+          <button @click="form.checkedIn = !form.checkedIn"
+            :class="form.checkedIn ? 'bg-amber-500' : 'bg-navy-700'"
+            class="relative w-14 h-7 rounded-full transition-colors flex-shrink-0">
+            <span :class="form.checkedIn ? 'left-8' : 'left-1'"
+              class="absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200"></span>
+          </button>
+        </div>
+
+        <div x-show="formError" class="mb-3 text-red-400 text-sm" x-text="formError"></div>
+
+        <div class="flex gap-3">
+          <button x-show="existingCheckinId" @click="removeCheckin()"
+            class="bg-red-950 hover:bg-red-900 text-red-400 px-4 py-3 rounded-xl font-semibold text-sm border border-red-900 transition-colors">
+            Remove
+          </button>
+          <button @click="saveCheckin()" :disabled="saving"
+            class="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-navy-900 py-4 rounded-xl font-bold text-lg transition-colors">
+            <span x-text="saving ? 'Saving...' : (existingCheckinId ? 'Update' : 'Check In')"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      const db = firebase.firestore();
+
+      Alpine.data('checkInPage', () => ({
+        tournamentId: null,
+        tournament: null,
+        teams: [],
+        checkinMap: {},
+        showModal: false,
+        activeTeam: null,
+        existingCheckinId: null,
+        form: { boatNumber: null, checkedIn: true, startBoat: false },
+        loading: true,
+        saving: false,
+        formError: null,
+
+        async init() {
+          const params = new URLSearchParams(window.location.search);
+          this.tournamentId = params.get('tournament');
+          if (!this.tournamentId) { this.loading = false; return; }
+
+          const [tSnap, teamsSnap, checkinsSnap] = await Promise.all([
+            db.collection('tournaments').doc(this.tournamentId).get(),
+            db.collection('teams').get(),
+            db.collection('checkins').where('tournamentId', '==', this.tournamentId).get()
+          ]);
+
+          if (!tSnap.exists) { this.loading = false; return; }
+          this.tournament = { id: tSnap.id, ...tSnap.data() };
+          this.teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => a.teamName.localeCompare(b.teamName));
+
+          const map = {};
+          checkinsSnap.docs.forEach(d => { map[d.data().teamId] = { id: d.id, ...d.data() }; });
+          this.checkinMap = map;
+
+          this.loading = false;
+        },
+
+        get checkedInCount() {
+          return Object.values(this.checkinMap).filter(c => c.checkedIn).length;
+        },
+
+        get sortedTeams() {
+          return [...this.teams].sort((a, b) => {
+            const aStart = this.checkinMap[a.id]?.startBoat ? -1 : 0;
+            const bStart = this.checkinMap[b.id]?.startBoat ? -1 : 0;
+            return aStart - bStart;
+          });
+        },
+
+        formatDate(ts) {
+          if (!ts) return '';
+          const d = ts.toDate ? ts.toDate() : new Date(ts);
+          return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        },
+
+        openEntry(team) {
+          this.activeTeam = team;
+          this.formError = null;
+          const existing = this.checkinMap[team.id];
+          if (existing) {
+            this.existingCheckinId = existing.id;
+            this.form = { boatNumber: existing.boatNumber || null, checkedIn: existing.checkedIn !== false, startBoat: existing.startBoat || false };
+          } else {
+            this.existingCheckinId = null;
+            this.form = { boatNumber: null, checkedIn: true, startBoat: false };
+          }
+          this.showModal = true;
+        },
+
+        async saveCheckin() {
+          this.formError = null;
+          if (!this.form.startBoat && !this.form.boatNumber) { this.formError = 'Enter a boat number.'; return; }
+
+          const data = {
+            tournamentId: this.tournamentId,
+            teamId: this.activeTeam.id,
+            boatNumber: this.form.startBoat ? null : (this.form.boatNumber || null),
+            checkedIn: this.form.checkedIn,
+            startBoat: this.form.startBoat || false,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+
+          this.saving = true;
+          try {
+            // If setting as start boat, clear it from any other team first
+            if (this.form.startBoat) {
+              const others = Object.values(this.checkinMap).filter(c => c.startBoat && c.teamId !== this.activeTeam.id);
+              for (const other of others) {
+                await db.collection('checkins').doc(other.id).update({ startBoat: false });
+                this.checkinMap[other.teamId] = { ...this.checkinMap[other.teamId], startBoat: false };
+              }
+            }
+
+            if (this.existingCheckinId) {
+              await db.collection('checkins').doc(this.existingCheckinId).update(data);
+            } else {
+              const ref = await db.collection('checkins').add({
+                ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              this.existingCheckinId = ref.id;
+            }
+            this.checkinMap = { ...this.checkinMap, [this.activeTeam.id]: { id: this.existingCheckinId, ...data } };
+            this.showModal = false;
+          } catch (e) {
+            this.formError = 'Error saving. Please try again.';
+            console.error(e);
+          }
+          this.saving = false;
+        },
+
+        async removeCheckin() {
+          if (!confirm('Remove this check-in?')) return;
+          await db.collection('checkins').doc(this.existingCheckinId).delete();
+          const map = { ...this.checkinMap };
+          delete map[this.activeTeam.id];
+          this.checkinMap = map;
+          this.showModal = false;
+        }
+      }));
+    });
+  </script>
+</body>
+</html>

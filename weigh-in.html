@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — Weigh-In</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+
+  <script src="./firebase-init.js"></script>
+  <script src="./auth-guard.js"></script>
+
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <div class="flex items-center gap-2">
+      <a href="index.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Home</a>
+      <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')"
+        class="bg-navy-700 hover:bg-red-900 text-slate-400 hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold border border-navy-600 hover:border-red-800 transition-colors">
+        Sign Out
+      </button>
+    </div>
+  </nav>
+
+  <main class="p-4 max-w-lg mx-auto" x-data="weighInPage" x-init="init()">
+
+    <!-- No tournament -->
+    <div x-show="!tournamentId && !loading" class="text-center py-16 text-slate-400">
+      <div class="text-5xl mb-4">⚖️</div>
+      <p class="text-lg">No tournament selected.</p>
+      <a href="tournaments.html" class="mt-4 inline-block text-amber-400 hover:underline text-sm">Go to Tournaments →</a>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="flex justify-center py-12">
+      <div class="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Closed banner -->
+    <div x-show="tournament && tournament.status === 'closed'"
+      class="bg-red-950 border border-red-800 rounded-xl p-4 mb-4 text-red-300 text-sm">
+      🔒 This tournament is closed.
+      <a href="tournaments.html" class="underline ml-1">Back to Tournaments</a>
+    </div>
+
+    <div x-show="tournament && !loading">
+
+      <!-- Header -->
+      <div class="pt-4 mb-5">
+        <h1 class="text-2xl font-bold text-amber-400" x-text="tournament ? tournament.name : ''"></h1>
+        <p class="text-sm text-slate-400 mt-0.5" x-text="formatDate(tournament ? tournament.date : null)"></p>
+        <div class="mt-3">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-base font-bold text-white" x-text="`${weighedCount} of ${teams.length} teams weighed in`"></span>
+            <span class="text-sm font-semibold text-forest-400" x-text="teams.length ? Math.round(weighedCount / teams.length * 100) + '%' : ''"></span>
+          </div>
+          <div class="h-3 bg-navy-700 rounded-full overflow-hidden">
+            <div class="h-full bg-forest-500 rounded-full transition-all"
+              :style="`width: ${teams.length ? (weighedCount / teams.length * 100) : 0}%`"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team list -->
+      <div class="bg-navy-800 border border-navy-700 rounded-xl overflow-hidden mb-4">
+        <template x-for="(team, i) in teams" :key="team.id">
+          <div class="flex items-center gap-3 px-4 py-3 border-b border-navy-700/50 last:border-0 transition-colors"
+            :class="weighinMap[team.id] ? 'bg-forest-700/10' : ''">
+
+            <!-- Status dot -->
+            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              :class="weighinMap[team.id] ? 'bg-forest-400' : 'bg-navy-600'"></div>
+
+            <!-- Team info -->
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-white text-base leading-tight" x-text="team.teamName"></div>
+              <div class="flex items-center gap-3 mt-0.5">
+                <span class="text-xs text-slate-500" x-text="team.angler1.name + ' & ' + team.angler2.name"></span>
+                <!-- Inline stats when weighed -->
+                <span x-show="weighinMap[team.id]" class="text-sm font-bold text-forest-400"
+                  x-text="weighinMap[team.id] ? weighinMap[team.id].totalLbs + ' lb ' + weighinMap[team.id].totalOz + ' oz' : ''"></span>
+                <span x-show="weighinMap[team.id] && weighinMap[team.id].bigFish > 0"
+                  class="text-xs text-amber-400"
+                  x-text="weighinMap[team.id] ? '🐟 ' + weighinMap[team.id].bigBassLbs + ' lb ' + weighinMap[team.id].bigBassOz + ' oz' : ''"></span>
+                <span x-show="weighinMap[team.id] && weighinMap[team.id].penaltyCount > 0"
+                  class="text-xs text-red-400"
+                  x-text="weighinMap[team.id] ? '⚠️ ' + weighinMap[team.id].penaltyCount : ''"></span>
+              </div>
+            </div>
+
+            <!-- Fish count badge -->
+            <div x-show="weighinMap[team.id]"
+              class="text-xs font-bold text-slate-400 flex-shrink-0"
+              x-text="weighinMap[team.id] ? '🎣 ' + (weighinMap[team.id].fishCount || 0) : ''"></div>
+
+            <!-- Action button -->
+            <button
+              x-show="tournament && tournament.status === 'open'"
+              @click="openEntry(team)"
+              :class="weighinMap[team.id]
+                ? 'bg-navy-700 hover:bg-navy-600 text-slate-300 border-navy-600'
+                : 'bg-amber-500 hover:bg-amber-400 text-navy-900 border-amber-400'"
+              class="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-bold border transition-colors">
+              <span x-text="weighinMap[team.id] ? 'Edit' : 'Weigh'"></span>
+            </button>
+
+          </div>
+        </template>
+      </div>
+
+      <div x-show="teams.length === 0 && !loading" class="text-center py-8 text-slate-500 text-sm">
+        No teams found. <a href="teams.html" class="text-amber-400 hover:underline">Add teams first →</a>
+      </div>
+    </div>
+
+    <!-- Entry Modal -->
+    <div x-show="showModal" x-transition @click="showModal = false"
+      class="fixed inset-0 bg-black/70 flex items-end justify-center z-50">
+      <div class="bg-navy-800 border-t border-navy-600 rounded-t-2xl p-5 w-full max-w-lg shadow-2xl" @click.stop>
+
+        <!-- Modal header -->
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-white" x-text="activeTeam ? activeTeam.teamName : ''"></h2>
+            <p class="text-xs text-slate-400" x-text="activeTeam ? activeTeam.angler1.name + ' & ' + activeTeam.angler2.name : ''"></p>
+          </div>
+          <button @click="showModal = false" class="text-slate-400 hover:text-white text-2xl leading-none">×</button>
+        </div>
+
+        <div class="space-y-3">
+
+          <!-- # Fish -->
+          <div class="bg-navy-900 border border-navy-700 rounded-xl p-4">
+            <label class="block text-sm font-semibold text-slate-300 mb-3">🎣 Number of Fish</label>
+            <div class="flex items-center justify-center gap-4">
+              <button type="button" @click="form.fishCount = Math.max(0, (form.fishCount || 0) - 1)"
+                class="w-12 h-12 rounded-full bg-navy-700 hover:bg-navy-600 text-white font-bold text-2xl transition-colors flex items-center justify-center">−</button>
+              <span class="text-white font-black text-5xl w-16 text-center" x-text="form.fishCount || 0"></span>
+              <button type="button" @click="form.fishCount = Math.min(5, (form.fishCount || 0) + 1)"
+                class="w-12 h-12 rounded-full bg-navy-700 hover:bg-navy-600 text-white font-bold text-2xl transition-colors flex items-center justify-center">+</button>
+            </div>
+          </div>
+
+          <!-- Big Bass -->
+          <div class="bg-navy-900 border border-navy-700 rounded-xl p-4">
+            <label class="block text-sm font-semibold text-slate-300 mb-3">🐟 Big Bass Weight</label>
+            <div class="flex items-center gap-3">
+              <div class="flex-1">
+                <label class="block text-xs text-slate-500 mb-1">Pounds</label>
+                <input type="number" min="0" max="30" step="1" inputmode="numeric"
+                  x-model.number="form.bigBassLbs" placeholder="0"
+                  class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
+              </div>
+              <div class="text-slate-500 text-2xl font-light pt-4">lb</div>
+              <div class="flex-1">
+                <label class="block text-xs text-slate-500 mb-1">Ounces</label>
+                <input type="number" min="0" max="15" step="1" inputmode="numeric"
+                  x-model.number="form.bigBassOz" placeholder="0"
+                  class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
+              </div>
+              <div class="text-slate-500 text-2xl font-light pt-4">oz</div>
+            </div>
+          </div>
+
+          <!-- Total Weight -->
+          <div class="bg-navy-900 border border-navy-700 rounded-xl p-4">
+            <label class="block text-sm font-semibold text-slate-300 mb-3">Total Weight</label>
+            <div class="flex items-center gap-3">
+              <div class="flex-1">
+                <label class="block text-xs text-slate-500 mb-1">Pounds</label>
+                <input type="number" min="0" max="200" step="1" inputmode="numeric"
+                  x-model.number="form.totalLbs" placeholder="0"
+                  class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
+              </div>
+              <div class="text-slate-500 text-2xl font-light pt-4">lb</div>
+              <div class="flex-1">
+                <label class="block text-xs text-slate-500 mb-1">Ounces</label>
+                <input type="number" min="0" max="15" step="1" inputmode="numeric"
+                  x-model.number="form.totalOz" placeholder="0"
+                  class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
+              </div>
+              <div class="text-slate-500 text-2xl font-light pt-4">oz</div>
+            </div>
+
+            <!-- Penalty -->
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-navy-700">
+              <div>
+                <span class="text-sm text-slate-300 font-semibold">Dead Fish Penalty</span>
+                <span class="text-xs text-slate-500 ml-2">−8 oz each</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <button type="button" @click="form.penaltyCount = Math.max(0, form.penaltyCount - 1)"
+                  class="w-9 h-9 rounded-full bg-navy-700 hover:bg-navy-600 text-white font-bold transition-colors flex items-center justify-center text-lg">−</button>
+                <span class="text-white font-semibold text-lg w-6 text-center" x-text="form.penaltyCount"></span>
+                <button type="button" @click="form.penaltyCount++"
+                  class="w-9 h-9 rounded-full bg-navy-700 hover:bg-navy-600 text-white font-bold transition-colors flex items-center justify-center text-lg">+</button>
+              </div>
+            </div>
+            <div x-show="form.penaltyCount > 0" class="text-center mt-1 text-red-400 text-xs">
+              −<span x-text="form.penaltyCount * 8"></span> oz penalty applied
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <div x-show="adjustedWeight > 0" class="bg-forest-700/30 border border-forest-600/50 rounded-xl p-3 flex items-center justify-between">
+            <span class="text-slate-300 text-sm">Adjusted Total</span>
+            <span class="text-forest-400 font-bold text-lg" x-text="adjustedWeight.toFixed(2) + ' lbs'"></span>
+          </div>
+
+        </div>
+
+        <div x-show="formError" class="mt-3 text-red-400 text-sm" x-text="formError"></div>
+
+        <button @click="submitWeighIn()" :disabled="saving"
+          class="w-full mt-4 bg-forest-600 hover:bg-forest-500 disabled:opacity-40 text-white py-4 rounded-xl font-bold text-lg transition-colors">
+          <span x-text="saving ? 'Saving...' : (existingWeighinId ? 'Update' : 'Submit Weigh-In')"></span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      const db = firebase.firestore();
+
+      function lbsOzToDecimal(lbs, oz) {
+        return (lbs || 0) + ((oz || 0) / 16);
+      }
+
+      Alpine.data('weighInPage', () => ({
+        tournamentId: null,
+        tournament: null,
+        teams: [],
+        weighinMap: {},         // teamId → weighin doc
+        showModal: false,
+        activeTeam: null,
+        existingWeighinId: null,
+        form: { fishCount: 5, bigBassLbs: null, bigBassOz: null, totalLbs: null, totalOz: null, penaltyCount: 0 },
+        loading: true,
+        saving: false,
+        formError: null,
+
+        async init() {
+          const params = new URLSearchParams(window.location.search);
+          this.tournamentId = params.get('tournament');
+          if (!this.tournamentId) { this.loading = false; return; }
+
+          const [tSnap, teamsSnap, weighinsSnap] = await Promise.all([
+            db.collection('tournaments').doc(this.tournamentId).get(),
+            db.collection('teams').get(),
+            db.collection('weighins').where('tournamentId', '==', this.tournamentId).get()
+          ]);
+
+          if (!tSnap.exists) { this.loading = false; return; }
+          this.tournament = { id: tSnap.id, ...tSnap.data() };
+          this.teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => a.teamName.localeCompare(b.teamName));
+
+          const map = {};
+          weighinsSnap.docs.forEach(d => { map[d.data().teamId] = { id: d.id, ...d.data() }; });
+          this.weighinMap = map;
+
+          this.loading = false;
+        },
+
+        get weighedCount() {
+          return Object.keys(this.weighinMap).length;
+        },
+
+        get adjustedWeight() {
+          const raw = lbsOzToDecimal(this.form.totalLbs, this.form.totalOz);
+          return Math.max(0, raw - (this.form.penaltyCount * 0.5));
+        },
+
+        formatDate(ts) {
+          if (!ts) return '';
+          const d = ts.toDate ? ts.toDate() : new Date(ts);
+          return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        },
+
+        formatWeight(lbs, oz) {
+          return `${lbs || 0} lb ${oz || 0} oz`;
+        },
+
+        openEntry(team) {
+          this.activeTeam = team;
+          this.formError = null;
+          const existing = this.weighinMap[team.id];
+          if (existing) {
+            this.existingWeighinId = existing.id;
+            this.form = {
+              fishCount: existing.fishCount || 0,
+              bigBassLbs: existing.bigBassLbs || null,
+              bigBassOz: existing.bigBassOz || null,
+              totalLbs: existing.totalLbs || null,
+              totalOz: existing.totalOz || null,
+              penaltyCount: existing.penaltyCount || 0,
+            };
+          } else {
+            this.existingWeighinId = null;
+            this.form = { fishCount: 5, bigBassLbs: null, bigBassOz: null, totalLbs: null, totalOz: null, penaltyCount: 0 };
+          }
+          this.showModal = true;
+        },
+
+        async submitWeighIn() {
+          this.formError = null;
+          const totalDecimal = lbsOzToDecimal(this.form.totalLbs, this.form.totalOz);
+          if (!totalDecimal) { this.formError = 'Enter a total weight.'; return; }
+
+          const data = {
+            tournamentId: this.tournamentId,
+            teamId: this.activeTeam.id,
+            fishCount: this.form.fishCount || 0,
+            bigBassLbs: this.form.bigBassLbs || 0,
+            bigBassOz: this.form.bigBassOz || 0,
+            bigFish: Math.round(lbsOzToDecimal(this.form.bigBassLbs, this.form.bigBassOz) * 100) / 100,
+            totalLbs: this.form.totalLbs || 0,
+            totalOz: this.form.totalOz || 0,
+            penaltyCount: this.form.penaltyCount || 0,
+            totalWeight: Math.round(this.adjustedWeight * 100) / 100,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+
+          this.saving = true;
+          try {
+            if (this.existingWeighinId) {
+              await db.collection('weighins').doc(this.existingWeighinId).update(data);
+            } else {
+              const ref = await db.collection('weighins').add({
+                ...data, submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              this.existingWeighinId = ref.id;
+            }
+            // Update local map so card refreshes immediately
+            this.weighinMap = { ...this.weighinMap, [this.activeTeam.id]: { id: this.existingWeighinId, ...data } };
+            this.showModal = false;
+          } catch (e) {
+            this.formError = 'Error saving. Please try again.';
+            console.error(e);
+          }
+          this.saving = false;
+        }
+      }));
+    });
+  </script>
+</body>
+</html>

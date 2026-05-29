@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — Tournaments</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Firebase compat (globals — no import/export needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- Alpine -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+
+  <!-- Firebase init -->
+  <script src="./firebase-init.js"></script>
+  <script src="./auth-guard.js"></script>
+
+  <!-- Nav -->
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <div class="flex items-center gap-2">
+      <a href="index.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Home</a>
+      <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')"
+        class="bg-navy-700 hover:bg-red-900 text-slate-400 hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold border border-navy-600 hover:border-red-800 transition-colors">
+        Sign Out
+      </button>
+    </div>
+  </nav>
+
+  <main class="p-4 max-w-2xl mx-auto" x-data="tournamentManager" x-init="init()">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-amber-400">Tournaments</h1>
+      <button @click="showCreateModal = true"
+        class="bg-forest-600 hover:bg-forest-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+        + New Tournament
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="flex justify-center py-12">
+      <div class="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="!loading && tournaments.length === 0" class="text-center py-16 text-slate-400">
+      <div class="text-5xl mb-4">🏆</div>
+      <p class="text-lg">No tournaments yet.</p>
+      <p class="text-sm mt-1">Create your first weekly tournament to get started.</p>
+    </div>
+
+    <!-- Tournament list -->
+    <div x-show="!loading" class="space-y-3">
+      <template x-for="t in tournaments" :key="t.id">
+        <div class="border rounded-xl p-4 transition-colors"
+          :class="t.status === 'open' ? 'bg-forest-700/20 border-forest-500/50' : 'bg-navy-800 border-navy-700'">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-semibold text-lg" :class="t.status === 'open' ? 'text-white' : 'text-white'" x-text="t.name"></span>
+                <span x-show="t.status === 'open'"
+                  class="flex items-center gap-1 text-xs bg-forest-600 text-forest-300 font-bold px-2.5 py-1 rounded-full flex-shrink-0">
+                  <span class="w-1.5 h-1.5 rounded-full bg-forest-400 animate-pulse"></span> ACTIVE
+                </span>
+                <a x-show="t.mapsLink" :href="t.mapsLink" target="_blank"
+                  class="bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-500/40 hover:border-amber-400 transition-colors flex-shrink-0">
+                  📍 Map
+                </a>
+              </div>
+              <div class="text-sm text-slate-400 mt-0.5" x-text="formatDate(t.date)"></div>
+              <div x-show="t.locationName" class="text-xs text-slate-500 mt-0.5" x-text="t.locationName"></div>
+              <!-- Rules chips -->
+              <div class="flex gap-2 mt-2 flex-wrap">
+                <span x-show="t.startTime" class="text-xs bg-navy-700 border border-navy-600 text-slate-300 px-2 py-0.5 rounded-full">
+                  🕐 Start <span x-text="formatTime(t.startTime)"></span>
+                </span>
+                <span x-show="t.noWakeTime" class="text-xs bg-navy-700 border border-navy-600 text-slate-300 px-2 py-0.5 rounded-full">
+                  ⚓ No wake <span x-text="formatTime(t.noWakeTime)"></span>
+                </span>
+                <span x-show="t.sizeLimit" class="text-xs bg-navy-700 border border-navy-600 text-slate-300 px-2 py-0.5 rounded-full">
+                  📏 <span x-text="t.sizeLimit"></span>" min
+                </span>
+                <span x-show="checkinCounts[t.id] > 0"
+                  class="text-xs bg-amber-500/15 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded-full font-semibold">
+                  ✅ <span x-text="checkinCounts[t.id]"></span> checked in
+                </span>
+              </div>
+            </div>
+            <span x-show="t.status !== 'open'"
+              class="text-xs font-semibold px-2.5 py-1 rounded-full border bg-navy-700 text-slate-400 border-navy-600 flex-shrink-0">
+              closed
+            </span>
+          </div>
+
+          <div class="flex gap-2 mt-4 flex-wrap">
+            <!-- Check-In: disabled when closed -->
+            <span x-show="t.status !== 'open'"
+              class="opacity-35 cursor-not-allowed bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-semibold border border-amber-500/20 select-none">
+              ✅ Check-In
+            </span>
+            <a x-show="t.status === 'open'" :href="`checkin.html?tournament=${t.id}`"
+              class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors border border-amber-500/30 hover:border-amber-400">
+              ✅ Check-In
+            </a>
+            <!-- Weigh-In: only when open -->
+            <a x-show="t.status === 'open'" :href="`weigh-in.html?tournament=${t.id}`"
+              class="bg-forest-600 hover:bg-forest-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">
+              Enter Weigh-In
+            </a>
+            <!-- Always available -->
+            <a :href="`results.html?id=${t.id}`"
+              class="bg-navy-700 hover:bg-navy-600 text-slate-200 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors border border-navy-600">
+              View Results
+            </a>
+            <button @click="openEdit(t)"
+              class="text-slate-400 hover:text-amber-400 px-3 py-1.5 rounded-lg text-sm border border-navy-600 hover:border-amber-400 transition-colors">
+              Edit
+            </button>
+            <button @click="toggleStatus(t)"
+              :class="t.status === 'open'
+                ? 'text-red-400 hover:text-red-300 border-red-900 hover:border-red-700'
+                : 'bg-forest-600 hover:bg-forest-500 text-white border-forest-600'"
+              class="px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors ml-auto">
+              <span x-text="t.status === 'open' ? 'Close' : '▶ Activate'"></span>
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Create / Edit Modal -->
+    <div x-show="showCreateModal" x-transition
+      class="fixed inset-0 bg-black/70 flex items-start justify-center z-50 p-4 overflow-y-auto">
+      <div class="bg-navy-800 border border-navy-600 rounded-2xl p-6 w-full max-w-lg shadow-2xl my-4" @click.stop>
+        <h2 class="text-xl font-bold text-amber-400 mb-5" x-text="editingTournament ? 'Edit Tournament' : 'New Tournament'"></h2>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Tournament Name <span class="text-red-400">*</span></label>
+            <input x-model="form.name" type="text" placeholder="e.g. Round 1 — Lake Travis"
+              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Date <span class="text-red-400">*</span></label>
+            <input x-model="form.date" type="date"
+              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-400 transition-colors">
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Location Name</label>
+            <input x-model="form.locationName" type="text" placeholder="e.g. Lake Travis — Mansfield Dam"
+              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Google Maps Link</label>
+            <input type="text" placeholder="Paste Google Maps URL here"
+              x-model="form.mapsLink"
+              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+            <p class="text-xs text-slate-500 mt-1">In Google Maps: drop a pin → Share → Copy link → paste above</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Start Time</label>
+              <input x-model="form.startTime" type="time"
+                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-400 transition-colors">
+              <p class="text-xs text-slate-500 mt-1">Lines in the water</p>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">No Wake Time</label>
+              <input x-model="form.noWakeTime" type="time"
+                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-400 transition-colors">
+              <p class="text-xs text-slate-500 mt-1">Must return by</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Size Limit</label>
+              <div class="flex items-center gap-2">
+                <input x-model.number="form.sizeLimit" type="number" min="0" max="30" step="0.5" placeholder="12"
+                  class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+                <span class="text-slate-400 text-sm flex-shrink-0">in</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-1">Minimum keeper length</p>
+            </div>
+          </div>
+        </div>
+
+        <div x-show="error" class="mt-3 text-red-400 text-sm" x-text="error"></div>
+
+        <div class="flex gap-3 mt-6">
+          <button @click="closeModal()"
+            class="flex-1 bg-navy-700 hover:bg-navy-600 text-slate-300 py-2.5 rounded-lg font-semibold transition-colors">
+            Cancel
+          </button>
+          <button @click="createTournament()" :disabled="saving"
+            class="flex-1 bg-forest-600 hover:bg-forest-500 disabled:opacity-50 text-white py-2.5 rounded-lg font-semibold transition-colors">
+            <span x-text="saving ? 'Saving...' : (editingTournament ? 'Save Changes' : 'Create')"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      const db = firebase.firestore();
+
+      Alpine.data('tournamentManager', () => ({
+        tournaments: [],
+        checkinCounts: {},
+        showCreateModal: false,
+        editingTournament: null,
+        form: { name: '', date: '', locationName: '', mapsLink: '', startTime: '', noWakeTime: '', sizeLimit: null },
+        loading: true,
+        saving: false,
+        error: null,
+
+        init() {
+          db.collection('tournaments').orderBy('date', 'desc').onSnapshot(snap => {
+            const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            this.tournaments = [
+              ...all.filter(t => t.status === 'open'),
+              ...all.filter(t => t.status !== 'open')
+            ];
+            this.loading = false;
+          });
+          db.collection('checkins').get().then(snap => {
+            const counts = {};
+            snap.docs.forEach(d => {
+              const tid = d.data().tournamentId;
+              if (tid) counts[tid] = (counts[tid] || 0) + 1;
+            });
+            this.checkinCounts = counts;
+          });
+        },
+
+        openEdit(t) {
+          this.editingTournament = t;
+          let dateStr = '';
+          if (t.date) {
+            const d = t.date.toDate ? t.date.toDate() : new Date(t.date);
+            dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          }
+          this.form = {
+            name: t.name || '',
+            date: dateStr,
+            locationName: t.locationName || '',
+            mapsLink: t.mapsLink || '',
+            startTime: t.startTime || '',
+            noWakeTime: t.noWakeTime || '',
+            sizeLimit: t.sizeLimit || null,
+          };
+          this.error = null;
+          this.showCreateModal = true;
+        },
+
+        closeModal() {
+          this.showCreateModal = false;
+          this.editingTournament = null;
+          this.form = { name: '', date: '', locationName: '', mapsLink: '', startTime: '', noWakeTime: '', sizeLimit: null };
+          this.error = null;
+        },
+
+        get activeTournament() {
+          return this.tournaments.find(t => t.status === 'open') || null;
+        },
+
+        formatDate(ts) {
+          if (!ts) return '—';
+          const d = ts.toDate ? ts.toDate() : new Date(ts);
+          return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        },
+
+        formatTime(t) {
+          if (!t) return '';
+          const [h, m] = t.split(':').map(Number);
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+        },
+
+        async createTournament() {
+          this.error = null;
+          const name = this.form.name.trim();
+          const dateStr = this.form.date;
+          if (!name) { this.error = 'Tournament name is required.'; return; }
+          if (!dateStr) { this.error = 'Date is required.'; return; }
+
+          const [y, m, d] = dateStr.split('-').map(Number);
+          const dateTs = firebase.firestore.Timestamp.fromDate(new Date(y, m - 1, d));
+
+          const data = {
+            name,
+            date: dateTs,
+            locationName: this.form.locationName || null,
+            mapsLink: this.form.mapsLink || null,
+            startTime: this.form.startTime || null,
+            noWakeTime: this.form.noWakeTime || null,
+            sizeLimit: this.form.sizeLimit || null,
+          };
+
+          this.saving = true;
+          try {
+            if (this.editingTournament) {
+              await db.collection('tournaments').doc(this.editingTournament.id).update(data);
+            } else {
+              // Close any currently open tournament before creating a new one
+              await this.closeAllOpen(null);
+              await db.collection('tournaments').add({
+                ...data,
+                status: 'open',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                closedAt: null,
+              });
+            }
+            this.closeModal();
+          } catch (e) {
+            this.error = 'Error saving tournament. Please try again.';
+            console.error(e);
+          }
+          this.saving = false;
+        },
+
+        async closeAllOpen(exceptId = null) {
+          const snap = await db.collection('tournaments').where('status', '==', 'open').get();
+          for (const doc of snap.docs) {
+            if (doc.id !== exceptId) {
+              await doc.ref.update({
+                status: 'closed',
+                closedAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+            }
+          }
+        },
+
+        async toggleStatus(tournament) {
+          const closing = tournament.status === 'open';
+          if (closing) {
+            if (!confirm('Close this tournament? Weigh-in entry will be locked.')) return;
+            await db.collection('tournaments').doc(tournament.id).update({
+              status: 'closed',
+              closedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } else {
+            // Activating — close everything else first
+            const snap = await db.collection('tournaments').where('status', '==', 'open').get();
+            const others = snap.docs.filter(d => d.id !== tournament.id);
+            if (others.length > 0) {
+              const otherName = others[0].data().name;
+              if (!confirm(`"${otherName}" is currently active and will be closed. Continue?`)) return;
+              for (const doc of others) {
+                await doc.ref.update({ status: 'closed', closedAt: firebase.firestore.FieldValue.serverTimestamp() });
+              }
+            }
+            await db.collection('tournaments').doc(tournament.id).update({ status: 'open', closedAt: null });
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+</html>

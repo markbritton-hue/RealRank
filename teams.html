@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelRank — Teams</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+
+  <script src="./firebase-init.js"></script>
+  <script src="./auth-guard.js"></script>
+
+  <!-- Nav -->
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <div class="flex items-center gap-2">
+      <a href="index.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Home</a>
+      <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')"
+        class="bg-navy-700 hover:bg-red-900 text-slate-400 hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold border border-navy-600 hover:border-red-800 transition-colors">
+        Sign Out
+      </button>
+    </div>
+  </nav>
+
+  <main class="p-4 max-w-2xl mx-auto" x-data="teamManager" x-init="init()">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-amber-400">Teams</h1>
+      <button @click="openAdd()"
+        class="bg-forest-600 hover:bg-forest-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+        + Add Team
+      </button>
+    </div>
+
+    <div x-show="loading" class="flex justify-center py-12">
+      <div class="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div x-show="!loading && teams.length === 0" class="text-center py-16 text-slate-400">
+      <div class="text-5xl mb-4">🎣</div>
+      <p class="text-lg">No teams yet.</p>
+      <p class="text-sm mt-1">Add your first team to get started.</p>
+    </div>
+
+    <div x-show="!loading" class="space-y-3">
+      <template x-for="team in teams" :key="team.id">
+        <div class="bg-navy-800 border border-navy-700 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <div class="font-semibold text-white" x-text="team.teamName"></div>
+            <div class="text-sm text-slate-400 mt-0.5">
+              <span x-text="team.angler1.name"></span>
+              <span class="mx-1 text-slate-600">&amp;</span>
+              <span x-text="team.angler2.name"></span>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button @click="openEdit(team)"
+              class="text-slate-400 hover:text-amber-400 px-3 py-1.5 rounded-lg text-sm border border-navy-600 hover:border-amber-400 transition-colors">
+              Edit
+            </button>
+            <button @click="deleteTeam(team.id)"
+              class="text-slate-400 hover:text-red-400 px-3 py-1.5 rounded-lg text-sm border border-navy-600 hover:border-red-500 transition-colors">
+              Delete
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Modal -->
+    <div x-show="showModal" x-transition class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div class="bg-navy-800 border border-navy-600 rounded-2xl p-6 w-full max-w-md shadow-2xl" @click.stop>
+        <h2 class="text-xl font-bold text-amber-400 mb-5" x-text="editingTeam ? 'Edit Team' : 'New Team'"></h2>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Team Name <span class="text-slate-500">(optional)</span></label>
+            <input x-model="form.teamName" type="text" placeholder="e.g. Bass Brothers"
+              class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Angler 1 <span class="text-red-400">*</span></label>
+              <input x-model="form.angler1Name" type="text" placeholder="First name"
+                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Angler 2 <span class="text-red-400">*</span></label>
+              <input x-model="form.angler2Name" type="text" placeholder="First name"
+                class="w-full bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+            </div>
+          </div>
+        </div>
+
+        <div x-show="error" class="mt-3 text-red-400 text-sm" x-text="error"></div>
+
+        <div class="flex gap-3 mt-6">
+          <button @click="showModal = false"
+            class="flex-1 bg-navy-700 hover:bg-navy-600 text-slate-300 py-2.5 rounded-lg font-semibold transition-colors">
+            Cancel
+          </button>
+          <button @click="saveTeam()" :disabled="saving"
+            class="flex-1 bg-forest-600 hover:bg-forest-500 disabled:opacity-50 text-white py-2.5 rounded-lg font-semibold transition-colors">
+            <span x-text="saving ? 'Saving...' : (editingTeam ? 'Save Changes' : 'Add Team')"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      const db = firebase.firestore();
+
+      Alpine.data('teamManager', () => ({
+        teams: [],
+        showModal: false,
+        editingTeam: null,
+        form: { teamName: '', angler1Name: '', angler2Name: '' },
+        loading: true,
+        saving: false,
+        error: null,
+
+        init() {
+          db.collection('teams').onSnapshot(snap => {
+            this.teams = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+              .sort((a, b) => a.teamName.localeCompare(b.teamName));
+            this.loading = false;
+          });
+        },
+
+        openAdd() {
+          this.editingTeam = null;
+          this.form = { teamName: '', angler1Name: '', angler2Name: '' };
+          this.error = null;
+          this.showModal = true;
+        },
+
+        openEdit(team) {
+          this.editingTeam = team;
+          this.form = { teamName: team.teamName, angler1Name: team.angler1.name, angler2Name: team.angler2.name };
+          this.error = null;
+          this.showModal = true;
+        },
+
+        async saveTeam() {
+          this.error = null;
+          const a1 = this.form.angler1Name.trim();
+          const a2 = this.form.angler2Name.trim();
+          if (!a1 || !a2) { this.error = 'Both angler names are required.'; return; }
+          const teamName = this.form.teamName.trim() || `${a1} & ${a2}`;
+          const data = { teamName, angler1: { name: a1 }, angler2: { name: a2 } };
+          this.saving = true;
+          try {
+            if (this.editingTeam) {
+              await db.collection('teams').doc(this.editingTeam.id).update(data);
+            } else {
+              await db.collection('teams').add({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            }
+            this.showModal = false;
+          } catch (e) {
+            this.error = 'Error saving team. Please try again.';
+            console.error(e);
+          }
+          this.saving = false;
+        },
+
+        async deleteTeam(id) {
+          const snap = await db.collection('weighins').where('teamId', '==', id).get();
+          if (!snap.empty) { alert('Cannot delete — team has existing weigh-in records.'); return; }
+          if (!confirm('Delete this team? This cannot be undone.')) return;
+          await db.collection('teams').doc(id).delete();
+        }
+      }));
+    });
+  </script>
+</body>
+</html>
