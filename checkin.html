@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ReelRank — Check-In</title>
+  <title>LeagueCast — Check-In</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -30,7 +30,7 @@
   <script src="./auth-guard.js"></script>
 
   <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
-    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 ReelRank</a>
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 LeagueCast</a>
     <div class="flex items-center gap-2">
       <button onclick="history.back()" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Back</button>
       <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')"
