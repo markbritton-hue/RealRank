@@ -69,19 +69,19 @@
         <p class="text-sm text-slate-400 mt-0.5" x-text="formatDate(tournament ? tournament.date : null)"></p>
         <div class="mt-3">
           <div class="flex items-center justify-between mb-1.5">
-            <span class="text-base font-bold text-white" x-text="`${weighedCount} of ${teams.length} teams weighed in`"></span>
-            <span class="text-sm font-semibold text-forest-400" x-text="teams.length ? Math.round(weighedCount / teams.length * 100) + '%' : ''"></span>
+            <span class="text-base font-bold text-white" x-text="`${weighedCount} of ${checkedInTeams.length} teams weighed in`"></span>
+            <span class="text-sm font-semibold text-forest-400" x-text="checkedInTeams.length ? Math.round(weighedCount / checkedInTeams.length * 100) + '%' : ''"></span>
           </div>
           <div class="h-3 bg-navy-700 rounded-full overflow-hidden">
             <div class="h-full bg-forest-500 rounded-full transition-all"
-              :style="`width: ${teams.length ? (weighedCount / teams.length * 100) : 0}%`"></div>
+              :style="`width: ${checkedInTeams.length ? (weighedCount / checkedInTeams.length * 100) : 0}%`"></div>
           </div>
         </div>
       </div>
 
       <!-- Team list -->
       <div class="bg-navy-800 border border-navy-700 rounded-xl overflow-hidden mb-4">
-        <template x-for="(team, i) in teams" :key="team.id">
+        <template x-for="(team, i) in checkedInTeams" :key="team.id">
           <div class="flex items-center gap-3 px-4 py-3 border-b border-navy-700/50 last:border-0 transition-colors"
             :class="weighinMap[team.id] ? 'bg-forest-700/10' : ''">
 
@@ -251,6 +251,7 @@
         tournament: null,
         teams: [],
         weighinMap: {},         // teamId → weighin doc
+        checkinMap: {},         // teamId → checkin doc
         showModal: false,
         activeTeam: null,
         existingWeighinId: null,
@@ -264,10 +265,11 @@
           this.tournamentId = params.get('tournament');
           if (!this.tournamentId) { this.loading = false; return; }
 
-          const [tSnap, teamsSnap, weighinsSnap] = await Promise.all([
+          const [tSnap, teamsSnap, weighinsSnap, checkinsSnap] = await Promise.all([
             db.collection('tournaments').doc(this.tournamentId).get(),
             db.collection('teams').get(),
-            db.collection('weighins').where('tournamentId', '==', this.tournamentId).get()
+            db.collection('weighins').where('tournamentId', '==', this.tournamentId).get(),
+            db.collection('checkins').where('tournamentId', '==', this.tournamentId).get()
           ]);
 
           if (!tSnap.exists) { this.loading = false; return; }
@@ -275,11 +277,19 @@
           this.teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => a.teamName.localeCompare(b.teamName));
 
-          const map = {};
-          weighinsSnap.docs.forEach(d => { map[d.data().teamId] = { id: d.id, ...d.data() }; });
-          this.weighinMap = map;
+          const weighinMap = {};
+          weighinsSnap.docs.forEach(d => { weighinMap[d.data().teamId] = { id: d.id, ...d.data() }; });
+          this.weighinMap = weighinMap;
+
+          const checkinMap = {};
+          checkinsSnap.docs.forEach(d => { checkinMap[d.data().teamId] = { id: d.id, ...d.data() }; });
+          this.checkinMap = checkinMap;
 
           this.loading = false;
+        },
+
+        get checkedInTeams() {
+          return this.teams.filter(t => this.checkinMap[t.id]);
         },
 
         get weighedCount() {
