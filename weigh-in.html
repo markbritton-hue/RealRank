@@ -94,10 +94,10 @@
                 <span class="text-xs text-slate-500" x-text="team.angler1.name + ' & ' + team.angler2.name"></span>
                 <!-- Inline stats when weighed -->
                 <span x-show="weighinMap[team.id]" class="text-sm font-bold text-forest-400"
-                  x-text="weighinMap[team.id] ? weighinMap[team.id].totalLbs + ' lb ' + weighinMap[team.id].totalOz + ' oz' : ''"></span>
+                  x-text="weighinMap[team.id] ? weighinMap[team.id].totalWeight.toFixed(2) + ' lbs' : ''"></span>
                 <span x-show="weighinMap[team.id] && weighinMap[team.id].bigFish > 0"
                   class="text-xs text-amber-400"
-                  x-text="weighinMap[team.id] ? '🐟 ' + weighinMap[team.id].bigBassLbs + ' lb ' + weighinMap[team.id].bigBassOz + ' oz' : ''"></span>
+                  x-text="weighinMap[team.id] ? '🐟 ' + weighinMap[team.id].bigBassWeight.toFixed(2) + ' lbs' : ''"></span>
                 <span x-show="weighinMap[team.id] && weighinMap[team.id].penaltyCount > 0"
                   class="text-xs text-red-400"
                   x-text="weighinMap[team.id] ? '⚠️ ' + weighinMap[team.id].penaltyCount : ''"></span>
@@ -161,20 +161,10 @@
           <div class="bg-navy-900 border border-navy-700 rounded-xl p-4">
             <label class="block text-sm font-semibold text-slate-300 mb-3">🐟 Big Bass Weight</label>
             <div class="flex items-center gap-3">
-              <div class="flex-1">
-                <label class="block text-xs text-slate-500 mb-1">Pounds</label>
-                <input type="number" min="0" max="30" step="1" inputmode="numeric"
-                  x-model.number="form.bigBassLbs" placeholder="0"
-                  class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
-              </div>
-              <div class="text-slate-500 text-2xl font-light pt-4">lb</div>
-              <div class="flex-1">
-                <label class="block text-xs text-slate-500 mb-1">Ounces</label>
-                <input type="number" min="0" max="15" step="1" inputmode="numeric"
-                  x-model.number="form.bigBassOz" placeholder="0"
-                  class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
-              </div>
-              <div class="text-slate-500 text-2xl font-light pt-4">oz</div>
+              <input type="number" min="0" max="30" step="0.01" inputmode="decimal"
+                x-model.number="form.bigBassWeight" placeholder="0.00"
+                class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
+              <div class="text-slate-500 text-2xl font-light">lbs</div>
             </div>
           </div>
 
@@ -182,27 +172,17 @@
           <div class="bg-navy-900 border border-navy-700 rounded-xl p-4">
             <label class="block text-sm font-semibold text-slate-300 mb-3">Total Weight</label>
             <div class="flex items-center gap-3">
-              <div class="flex-1">
-                <label class="block text-xs text-slate-500 mb-1">Pounds</label>
-                <input type="number" min="0" max="200" step="1" inputmode="numeric"
-                  x-model.number="form.totalLbs" placeholder="0"
-                  class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
-              </div>
-              <div class="text-slate-500 text-2xl font-light pt-4">lb</div>
-              <div class="flex-1">
-                <label class="block text-xs text-slate-500 mb-1">Ounces</label>
-                <input type="number" min="0" max="15" step="1" inputmode="numeric"
-                  x-model.number="form.totalOz" placeholder="0"
-                  class="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
-              </div>
-              <div class="text-slate-500 text-2xl font-light pt-4">oz</div>
+              <input type="number" min="0" max="200" step="0.01" inputmode="decimal"
+                x-model.number="form.totalWeight" placeholder="0.00"
+                class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
+              <div class="text-slate-500 text-2xl font-light">lbs</div>
             </div>
 
             <!-- Penalty -->
             <div class="flex items-center justify-between mt-3 pt-3 border-t border-navy-700">
               <div>
                 <span class="text-sm text-slate-300 font-semibold">Dead Fish Penalty</span>
-                <span class="text-xs text-slate-500 ml-2">−8 oz each</span>
+                <span class="text-xs text-slate-500 ml-2">−0.5 lbs each</span>
               </div>
               <div class="flex items-center gap-3">
                 <button type="button" @click="form.penaltyCount = Math.max(0, form.penaltyCount - 1)"
@@ -213,7 +193,7 @@
               </div>
             </div>
             <div x-show="form.penaltyCount > 0" class="text-center mt-1 text-red-400 text-xs">
-              −<span x-text="form.penaltyCount * 8"></span> oz penalty applied
+              −<span x-text="(form.penaltyCount * 0.5).toFixed(2)"></span> lbs penalty applied
             </div>
           </div>
 
@@ -295,7 +275,7 @@
         },
 
         get adjustedWeight() {
-          const raw = lbsOzToDecimal(this.form.totalLbs, this.form.totalOz);
+          const raw = this.form.totalWeight || 0;
           return Math.max(0, raw - (this.form.penaltyCount * 0.5));
         },
 
@@ -317,35 +297,31 @@
             this.existingWeighinId = existing.id;
             this.form = {
               fishCount: existing.fishCount || 0,
-              bigBassLbs: existing.bigBassLbs || null,
-              bigBassOz: existing.bigBassOz || null,
-              totalLbs: existing.totalLbs || null,
-              totalOz: existing.totalOz || null,
+              bigBassWeight: existing.bigBassWeight || null,
+              totalWeight: existing.totalWeight || null,
               penaltyCount: existing.penaltyCount || 0,
             };
           } else {
             this.existingWeighinId = null;
-            this.form = { fishCount: 5, bigBassLbs: null, bigBassOz: null, totalLbs: null, totalOz: null, penaltyCount: 0 };
+            this.form = { fishCount: 5, bigBassWeight: null, totalWeight: null, penaltyCount: 0 };
           }
           this.showModal = true;
         },
 
         async submitWeighIn() {
           this.formError = null;
-          const totalDecimal = lbsOzToDecimal(this.form.totalLbs, this.form.totalOz);
-          if (!totalDecimal) { this.formError = 'Enter a total weight.'; return; }
+          const totalWeight = this.form.totalWeight || 0;
+          if (!totalWeight) { this.formError = 'Enter a total weight.'; return; }
 
           const data = {
             tournamentId: this.tournamentId,
             teamId: this.activeTeam.id,
             fishCount: this.form.fishCount || 0,
-            bigBassLbs: this.form.bigBassLbs || 0,
-            bigBassOz: this.form.bigBassOz || 0,
-            bigFish: Math.round(lbsOzToDecimal(this.form.bigBassLbs, this.form.bigBassOz) * 100) / 100,
-            totalLbs: this.form.totalLbs || 0,
-            totalOz: this.form.totalOz || 0,
+            bigBassWeight: this.form.bigBassWeight || 0,
+            bigFish: this.form.bigBassWeight || 0,
+            totalWeight: totalWeight,
             penaltyCount: this.form.penaltyCount || 0,
-            totalWeight: Math.round(this.adjustedWeight * 100) / 100,
+            adjustedWeight: Math.round(this.adjustedWeight * 100) / 100,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           };
 
