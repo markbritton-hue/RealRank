@@ -106,12 +106,13 @@
         loading: true,
 
         init() {
-          db.collection('tournaments').orderBy('date', 'desc').onSnapshot(snap => {
+          db.collection('tournaments').orderBy('date', 'asc').onSnapshot(snap => {
             const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            this.tournaments = [
-              ...all.filter(t => t.status === 'open'),
-              ...all.filter(t => t.status !== 'open')
-            ];
+            this.tournaments = all.sort((a, b) => {
+              const aDate = a.date?.toDate?.() || new Date(a.date);
+              const bDate = b.date?.toDate?.() || new Date(b.date);
+              return aDate - bDate;
+            });
             this.loading = false;
           });
         },
