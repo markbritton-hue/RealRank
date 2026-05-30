@@ -143,10 +143,7 @@
               <div class="text-right flex-shrink-0">
                 <div class="font-black text-3xl leading-none"
                   :class="entry.rank === '1' ? 'text-amber-400' : 'text-white'"
-                  x-text="entry.weighin.totalLbs !== undefined ? entry.weighin.totalLbs + ' lb' : entry.weighin.totalWeight.toFixed(3)"></div>
-                <div class="font-bold text-xl leading-none mt-0.5"
-                  :class="entry.rank === '1' ? 'text-amber-500' : 'text-slate-300'"
-                  x-text="entry.weighin.totalLbs !== undefined ? entry.weighin.totalOz + ' oz' : ''"></div>
+                  x-text="(entry.weighin.totalWeight || (entry.weighin.totalLbs ? entry.weighin.totalLbs + (entry.weighin.totalOz || 0) / 16 : 0)).toFixed(3) + ' lbs'"></div>
               </div>
             </div>
             <!-- Big bass row -->
