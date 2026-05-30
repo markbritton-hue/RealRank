@@ -118,22 +118,8 @@ export function buildSeasonLeaderboard(teams, weighins, tournaments, mode = 'wei
     return b.biggestBass - a.biggestBass;
   });
 
-  // Assign ranks
-  let rank = 1;
-  let prevVal = null;
-  let prevRankLabel = '1';
+  // Assign ranks (no ties after tiebreakers)
   return list.map((entry, i) => {
-    const val = entry[sortKey];
-    let rankLabel;
-    if (i === 0) {
-      rankLabel = '1';
-    } else if (val === prevVal) {
-      rankLabel = 'T-' + prevRankLabel.replace('T-', '');
-    } else {
-      rankLabel = String(i + 1);
-      prevRankLabel = rankLabel;
-    }
-    prevVal = val;
-    return { ...entry, rank: rankLabel };
+    return { ...entry, rank: String(i + 1) };
   });
 }
