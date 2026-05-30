@@ -68,7 +68,7 @@
         </div>
         <div class="bg-navy-800 border border-navy-700 rounded-xl p-3 text-center">
           <div class="text-slate-400 text-xs mb-1">Total Weight</div>
-          <div class="text-white font-bold text-lg" x-text="totalTournamentWeight.toFixed(2) + ' lbs'"></div>
+          <div class="text-white font-bold text-lg" x-text="totalTournamentWeight.toFixed(3) + ' lbs'"></div>
         </div>
       </div>
 
@@ -78,7 +78,7 @@
           <div class="text-amber-400 font-bold text-xs uppercase tracking-wider mb-0.5">Big Bass Winner</div>
           <div class="text-white font-bold text-xl" x-text="bigFishWinner ? bigFishWinner.teamName : ''"></div>
           <div class="text-amber-300 font-black text-2xl mt-0.5"
-            x-text="bigFishWinner ? (bigFishWinner.bigBassLbs !== undefined ? bigFishWinner.bigBassLbs + ' lb ' + bigFishWinner.bigBassOz + ' oz' : bigFishWinner.bigFish.toFixed(2) + ' lbs') : ''"></div>
+            x-text="bigFishWinner ? (bigFishWinner.bigFish || bigFishWinner.bigBassWeight || (bigFishWinner.bigBassLbs ? bigFishWinner.bigBassLbs + (bigFishWinner.bigBassOz || 0) / 16 : 0)).toFixed(3) + ' lbs' : ''"></div>
         </div>
       </div>
 
@@ -86,7 +86,7 @@
       <div x-show="isAdmin && ranked.filter(r => r.weighin).length >= 1" class="bg-navy-800 border border-navy-700 rounded-xl p-4 mb-5">
         <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-3">💰 Prize Payouts</h3>
         <div class="text-xs text-slate-500 mb-3">
-          <span x-text="weighedInCount + ' team' + (weighedInCount !== 1 ? 's' : '') + ' × $40 = $' + totalPot.toFixed(2)"></span>
+          <span x-text="weighedInCount + ' team' + (weighedInCount !== 1 ? 's' : '') + ' × $40 = $' + totalPot.toFixed(3)"></span>
         </div>
         <div class="space-y-2">
           <template x-if="ranked[0] && ranked[0].weighin">
@@ -95,7 +95,7 @@
                 <div class="text-xs text-amber-400 font-semibold">1st Place</div>
                 <div class="text-white font-bold text-sm" x-text="ranked[0].teamName"></div>
               </div>
-              <div class="text-amber-400 font-black text-lg" x-text="'$' + (totalPot * 0.5).toFixed(2)"></div>
+              <div class="text-amber-400 font-black text-lg" x-text="'$' + (totalPot * 0.5).toFixed(3)"></div>
             </div>
           </template>
           <template x-if="ranked[1] && ranked[1].weighin">
@@ -104,7 +104,7 @@
                 <div class="text-xs text-slate-400 font-semibold">2nd Place</div>
                 <div class="text-white font-bold text-sm" x-text="ranked[1].teamName"></div>
               </div>
-              <div class="text-slate-300 font-black text-lg" x-text="'$' + (totalPot * 0.3).toFixed(2)"></div>
+              <div class="text-slate-300 font-black text-lg" x-text="'$' + (totalPot * 0.3).toFixed(3)"></div>
             </div>
           </template>
           <template x-if="ranked[2] && ranked[2].weighin">
@@ -113,7 +113,7 @@
                 <div class="text-xs text-orange-400 font-semibold">3rd Place</div>
                 <div class="text-white font-bold text-sm" x-text="ranked[2].teamName"></div>
               </div>
-              <div class="text-orange-300 font-black text-lg" x-text="'$' + (totalPot * 0.2).toFixed(2)"></div>
+              <div class="text-orange-300 font-black text-lg" x-text="'$' + (totalPot * 0.2).toFixed(3)"></div>
             </div>
           </template>
         </div>
@@ -143,7 +143,7 @@
               <div class="text-right flex-shrink-0">
                 <div class="font-black text-3xl leading-none"
                   :class="entry.rank === '1' ? 'text-amber-400' : 'text-white'"
-                  x-text="entry.weighin.totalLbs !== undefined ? entry.weighin.totalLbs + ' lb' : entry.weighin.totalWeight.toFixed(2)"></div>
+                  x-text="entry.weighin.totalLbs !== undefined ? entry.weighin.totalLbs + ' lb' : entry.weighin.totalWeight.toFixed(3)"></div>
                 <div class="font-bold text-xl leading-none mt-0.5"
                   :class="entry.rank === '1' ? 'text-amber-500' : 'text-slate-300'"
                   x-text="entry.weighin.totalLbs !== undefined ? entry.weighin.totalOz + ' oz' : ''"></div>
@@ -156,9 +156,7 @@
               <span class="text-slate-400 text-sm">🐟 Big Bass</span>
               <span class="font-bold text-lg"
                 :class="entry.isBigFish ? 'text-amber-400' : 'text-slate-300'"
-                x-text="entry.weighin.bigBassLbs !== undefined
-                  ? entry.weighin.bigBassLbs + ' lb ' + entry.weighin.bigBassOz + ' oz'
-                  : entry.weighin.bigFish.toFixed(2) + ' lbs'"></span>
+                x-text="(entry.weighin.bigFish || entry.weighin.bigBassWeight || (entry.weighin.bigBassLbs ? entry.weighin.bigBassLbs + (entry.weighin.bigBassOz || 0) / 16 : 0)).toFixed(3) + ' lbs'"></span>
             </div>
             <!-- Penalty -->
             <div x-show="entry.weighin.penaltyCount > 0"

@@ -189,7 +189,7 @@
               <div class="text-slate-300 text-2xl mb-2">🥈</div>
               <div class="text-slate-100 font-bold text-base leading-tight mb-1" x-text="leaderboard[1]?.team?.angler1?.name + ' & ' + leaderboard[1]?.team?.angler2?.name"></div>
               <div class="text-slate-400 font-mono text-sm mt-1"
-                x-text="leaderboard[1]?.totalWeight.toFixed(2) + ' lbs'"></div>
+                x-text="leaderboard[1]?.totalWeight.toFixed(3) + ' lbs'"></div>
             </div>
             <div class="bg-slate-700/50 h-8 rounded-b-sm"></div>
           </div>
@@ -200,7 +200,7 @@
               <div class="text-amber-400 text-3xl mb-2">🏆</div>
               <div class="text-white font-black text-lg leading-tight mb-1" x-text="leaderboard[0]?.team?.angler1?.name + ' & ' + leaderboard[0]?.team?.angler2?.name"></div>
               <div class="text-amber-400 font-mono font-bold text-sm mt-1"
-                x-text="leaderboard[0]?.totalWeight.toFixed(2) + ' lbs'"></div>
+                x-text="leaderboard[0]?.totalWeight.toFixed(3) + ' lbs'"></div>
             </div>
             <div class="bg-amber-600/30 h-12 rounded-b-sm"></div>
           </div>
@@ -211,7 +211,7 @@
               <div class="text-orange-400 text-xl mb-2">🥉</div>
               <div class="text-slate-100 font-bold text-base leading-tight mb-1" x-text="leaderboard[2]?.team?.angler1?.name + ' & ' + leaderboard[2]?.team?.angler2?.name"></div>
               <div class="text-slate-400 font-mono text-sm mt-1"
-                x-text="leaderboard[2]?.totalWeight.toFixed(2) + ' lbs'"></div>
+                x-text="leaderboard[2]?.totalWeight.toFixed(3) + ' lbs'"></div>
             </div>
             <div class="bg-orange-700/20 h-5 rounded-b-sm"></div>
           </div>
@@ -254,7 +254,7 @@
                   <div class="text-xs text-slate-500">Total</div>
                   <div class="font-black text-base"
                     :class="entry.rank === '1' ? 'text-amber-400' : 'text-white'"
-                    x-text="entry.totalWeight.toFixed(2)"></div>
+                    x-text="entry.totalWeight.toFixed(3)"></div>
                 </div>
                 <span class="text-slate-500 text-sm" x-text="entry.expanded ? '▲' : '▼'"></span>
               </div>
@@ -425,15 +425,15 @@
         getTournamentWeighinWeight(teamId, tournamentId) {
           const w = this.getTournamentWeighin(teamId, tournamentId);
           if (!w) return '—';
-          if (w.totalLbs !== undefined) return `${w.totalLbs} lb ${w.totalOz} oz`;
-          return w.totalWeight ? w.totalWeight.toFixed(2) + ' lbs' : '—';
+          const weight = w.totalWeight || (w.totalLbs ? w.totalLbs + (w.totalOz || 0) / 16 : 0);
+          return weight ? weight.toFixed(3) + ' lbs' : '—';
         },
 
         getTournamentWeighinBigBass(teamId, tournamentId) {
           const w = this.getTournamentWeighin(teamId, tournamentId);
-          if (!w || !w.bigFish) return '';
-          if (w.bigBassLbs !== undefined) return `🐟 ${w.bigBassLbs} lb ${w.bigBassOz} oz`;
-          return `🐟 ${w.bigFish.toFixed(2)} lbs`;
+          if (!w || !w.bigFish && !w.bigBassWeight && !w.bigBassLbs) return '';
+          const bass = w.bigFish || w.bigBassWeight || (w.bigBassLbs ? w.bigBassLbs + (w.bigBassOz || 0) / 16 : 0);
+          return `🐟 ${bass.toFixed(3)} lbs`;
         },
 
         get seasonSummary() {
