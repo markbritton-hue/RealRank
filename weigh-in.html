@@ -94,10 +94,10 @@
                 <span class="text-xs text-slate-500" x-text="team.angler1.name + ' & ' + team.angler2.name"></span>
                 <!-- Inline stats when weighed -->
                 <span x-show="weighinMap[team.id]" class="text-sm font-bold text-forest-400"
-                  x-text="weighinMap[team.id] ? weighinMap[team.id].totalWeight.toFixed(2) + ' lbs' : ''"></span>
+                  x-text="weighinMap[team.id] ? weighinMap[team.id].totalWeight.toFixed(3) + ' lbs' : ''"></span>
                 <span x-show="weighinMap[team.id] && weighinMap[team.id].bigFish > 0"
                   class="text-xs text-amber-400"
-                  x-text="weighinMap[team.id] ? '🐟 ' + weighinMap[team.id].bigBassWeight.toFixed(2) + ' lbs' : ''"></span>
+                  x-text="weighinMap[team.id] ? '🐟 ' + weighinMap[team.id].bigBassWeight.toFixed(3) + ' lbs' : ''"></span>
                 <span x-show="weighinMap[team.id] && weighinMap[team.id].penaltyCount > 0"
                   class="text-xs text-red-400"
                   x-text="weighinMap[team.id] ? '⚠️ ' + weighinMap[team.id].penaltyCount : ''"></span>
@@ -161,8 +161,8 @@
           <div class="bg-navy-900 border border-navy-700 rounded-xl p-4">
             <label class="block text-sm font-semibold text-slate-300 mb-3">🐟 Big Bass Weight</label>
             <div class="flex items-center gap-3">
-              <input type="number" min="0" max="30" step="0.01" inputmode="decimal"
-                x-model.number="form.bigBassWeight" placeholder="0.00"
+              <input type="number" min="0" max="30" step="0.001" inputmode="decimal"
+                x-model.number="form.bigBassWeight" placeholder="0.000"
                 class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
               <div class="text-slate-500 text-2xl font-light">lbs</div>
             </div>
@@ -172,8 +172,8 @@
           <div class="bg-navy-900 border border-navy-700 rounded-xl p-4">
             <label class="block text-sm font-semibold text-slate-300 mb-3">Total Weight</label>
             <div class="flex items-center gap-3">
-              <input type="number" min="0" max="200" step="0.01" inputmode="decimal"
-                x-model.number="form.totalWeight" placeholder="0.00"
+              <input type="number" min="0" max="200" step="0.001" inputmode="decimal"
+                x-model.number="form.totalWeight" placeholder="0.000"
                 class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
               <div class="text-slate-500 text-2xl font-light">lbs</div>
             </div>
@@ -193,14 +193,14 @@
               </div>
             </div>
             <div x-show="form.penaltyCount > 0" class="text-center mt-1 text-red-400 text-xs">
-              −<span x-text="(form.penaltyCount * 0.5).toFixed(2)"></span> lbs penalty applied
+              −<span x-text="(form.penaltyCount * 0.5).toFixed(3)"></span> lbs penalty applied
             </div>
           </div>
 
           <!-- Summary -->
           <div x-show="adjustedWeight > 0" class="bg-forest-700/30 border border-forest-600/50 rounded-xl p-3 flex items-center justify-between">
             <span class="text-slate-300 text-sm">Adjusted Total</span>
-            <span class="text-forest-400 font-bold text-lg" x-text="adjustedWeight.toFixed(2) + ' lbs'"></span>
+            <span class="text-forest-400 font-bold text-lg" x-text="adjustedWeight.toFixed(3) + ' lbs'"></span>
           </div>
 
         </div>
