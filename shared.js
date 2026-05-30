@@ -68,6 +68,7 @@ export function buildSeasonLeaderboard(teams, weighins, tournaments, mode = 'wei
       totalPoints: 0,
       wins: 0,
       bigFishWins: 0,
+      biggestBass: 0,
       tournamentsEntered: 0,
     };
   });
@@ -83,6 +84,11 @@ export function buildSeasonLeaderboard(teams, weighins, tournaments, mode = 'wei
       if (!teamPoints[w.teamId]) return;
       teamPoints[w.teamId].totalWeight += w.totalWeight || 0;
       teamPoints[w.teamId].tournamentsEntered += 1;
+
+      // Track biggest bass caught
+      if (w.bigFish && w.bigFish > teamPoints[w.teamId].biggestBass) {
+        teamPoints[w.teamId].biggestBass = w.bigFish;
+      }
 
       // Points: handle ties (share points)
       let pts = n - idx;
@@ -109,7 +115,7 @@ export function buildSeasonLeaderboard(teams, weighins, tournaments, mode = 'wei
   list.sort((a, b) => {
     if (b[sortKey] !== a[sortKey]) return b[sortKey] - a[sortKey];
     if (b.wins !== a.wins) return b.wins - a.wins;
-    return b.bigFishWins - a.bigFishWins;
+    return b.biggestBass - a.biggestBass;
   });
 
   // Assign ranks
