@@ -264,7 +264,7 @@
 
         get totalFishWeighed() {
           return this.ranked.filter(r => r.weighin)
-            .reduce((s, r) => s + (r.weighin.fish || []).filter(f => f && f > 0).length, 0);
+            .reduce((s, r) => s + (r.weighin.fishCount || 0), 0);
         },
         get totalTournamentWeight() {
           return this.ranked.filter(r => r.weighin).reduce((s, r) => s + (r.weighin.totalWeight || 0), 0);
