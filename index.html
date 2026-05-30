@@ -171,16 +171,6 @@
     </div>
 
     <div x-show="!loading">
-      <div class="flex items-center justify-center mb-5">
-        <div class="bg-navy-800 border border-navy-700 rounded-xl p-1 flex gap-1">
-          <button @click="sortMode = 'weight'; buildLeaderboard()"
-            :class="sortMode === 'weight' ? 'bg-amber-500 text-navy-900 font-bold' : 'text-slate-400 hover:text-white'"
-            class="px-4 py-1.5 rounded-lg text-sm transition-all">Total Weight</button>
-          <button @click="sortMode = 'points'; buildLeaderboard()"
-            :class="sortMode === 'points' ? 'bg-amber-500 text-navy-900 font-bold' : 'text-slate-400 hover:text-white'"
-            class="px-4 py-1.5 rounded-lg text-sm transition-all">Points</button>
-        </div>
-      </div>
 
       <div x-show="leaderboard.length === 0" class="text-center py-16 text-slate-400">
         <div class="text-5xl mb-4">🎣</div>
@@ -199,7 +189,7 @@
               <div class="text-slate-300 text-2xl mb-1">🥈</div>
               <div class="text-slate-200 font-semibold text-sm leading-tight" x-text="leaderboard[1]?.teamName"></div>
               <div class="text-slate-400 font-mono text-sm mt-1"
-                x-text="sortMode === 'weight' ? leaderboard[1]?.totalWeight.toFixed(2) + ' lbs' : leaderboard[1]?.totalPoints.toFixed(1) + ' pts'"></div>
+                x-text="leaderboard[1]?.totalWeight.toFixed(2) + ' lbs'"></div>
             </div>
             <div class="bg-slate-700/50 h-8 rounded-b-sm"></div>
           </div>
@@ -210,7 +200,7 @@
               <div class="text-amber-400 text-3xl mb-1">🏆</div>
               <div class="text-white font-bold text-sm leading-tight" x-text="leaderboard[0]?.teamName"></div>
               <div class="text-amber-400 font-mono font-bold text-sm mt-1"
-                x-text="sortMode === 'weight' ? leaderboard[0]?.totalWeight.toFixed(2) + ' lbs' : leaderboard[0]?.totalPoints.toFixed(1) + ' pts'"></div>
+                x-text="leaderboard[0]?.totalWeight.toFixed(2) + ' lbs'"></div>
             </div>
             <div class="bg-amber-600/30 h-12 rounded-b-sm"></div>
           </div>
@@ -221,7 +211,7 @@
               <div class="text-orange-400 text-xl mb-1">🥉</div>
               <div class="text-slate-300 font-semibold text-sm leading-tight" x-text="leaderboard[2]?.teamName"></div>
               <div class="text-slate-400 font-mono text-sm mt-1"
-                x-text="sortMode === 'weight' ? leaderboard[2]?.totalWeight.toFixed(2) + ' lbs' : leaderboard[2]?.totalPoints.toFixed(1) + ' pts'"></div>
+                x-text="leaderboard[2]?.totalWeight.toFixed(2) + ' lbs'"></div>
             </div>
             <div class="bg-orange-700/20 h-5 rounded-b-sm"></div>
           </div>
@@ -261,10 +251,10 @@
                   <div class="text-slate-300 font-semibold text-sm" x-text="entry.wins || '—'"></div>
                 </div>
                 <div class="text-right">
-                  <div class="text-xs text-slate-500" x-text="sortMode === 'weight' ? 'Total' : 'Pts'"></div>
+                  <div class="text-xs text-slate-500">Total</div>
                   <div class="font-black text-base"
                     :class="entry.rank === '1' ? 'text-amber-400' : 'text-white'"
-                    x-text="sortMode === 'weight' ? entry.totalWeight.toFixed(2) : entry.totalPoints.toFixed(1)"></div>
+                    x-text="entry.totalWeight.toFixed(2)"></div>
                 </div>
                 <span class="text-slate-500 text-sm" x-text="entry.expanded ? '▲' : '▼'"></span>
               </div>
