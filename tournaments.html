@@ -132,6 +132,10 @@
               class="text-slate-400 hover:text-amber-400 px-3 py-1.5 rounded-lg text-sm border border-navy-600 hover:border-amber-400 transition-colors">
               Edit
             </button>
+            <button @click="deleteTournament(t)"
+              class="text-slate-400 hover:text-red-400 px-3 py-1.5 rounded-lg text-sm border border-navy-600 hover:border-red-600 transition-colors">
+              Delete
+            </button>
             <button @click="toggleStatus(t)"
               :class="t.status === 'open'
                 ? 'text-red-400 hover:text-red-300 border-red-900 hover:border-red-700'
@@ -375,6 +379,16 @@
               }
             }
             await db.collection('tournaments').doc(tournament.id).update({ status: 'open', closedAt: null });
+          }
+        },
+
+        async deleteTournament(tournament) {
+          if (!confirm(`Delete "${tournament.name}"? This cannot be undone.`)) return;
+          try {
+            await db.collection('tournaments').doc(tournament.id).delete();
+          } catch (e) {
+            alert('Error deleting tournament. Please try again.');
+            console.error(e);
           }
         }
       }));
