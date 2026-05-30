@@ -164,6 +164,7 @@
               <input type="text" inputmode="decimal" pattern="^\d+(\.\d{0,3})?$"
                 x-model="form.bigBassWeight" placeholder="0.000"
                 @input="form.bigBassWeight = limitDecimals(form.bigBassWeight, 3)"
+                @keypress="if(!/[\d.]/.test($event.key) || ($event.target.value.includes('.') && $event.key === '.')) $event.preventDefault()"
                 class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
               <div class="text-slate-500 text-2xl font-light">lbs</div>
             </div>
@@ -176,6 +177,7 @@
               <input type="text" inputmode="decimal" pattern="^\d+(\.\d{0,3})?$"
                 x-model="form.totalWeight" placeholder="0.000"
                 @input="form.totalWeight = limitDecimals(form.totalWeight, 3)"
+                @keypress="if(!/[\d.]/.test($event.key) || ($event.target.value.includes('.') && $event.key === '.')) $event.preventDefault()"
                 class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
               <div class="text-slate-500 text-2xl font-light">lbs</div>
             </div>
@@ -241,14 +243,17 @@
         formError: null,
 
         limitDecimals(value, decimals) {
-          if (!value) return '';
-          const str = String(value);
+          if (!value && value !== 0) return '';
+          let str = String(value).trim();
+          if (!str) return '';
           const parts = str.split('.');
-          if (parts.length > 2) return parts[0] + '.' + parts.slice(1).join('');
-          if (parts[1] && parts[1].length > decimals) {
-            return parts[0] + '.' + parts[1].slice(0, decimals);
+          if (parts.length > 2) {
+            str = parts[0] + '.' + parts.slice(1).join('');
           }
-          return str;
+          if (parts[1] && parts[1].length > decimals) {
+            return parseFloat(parts[0] + '.' + parts[1].slice(0, decimals));
+          }
+          return parseFloat(str) || '';
         },
 
         async init() {
