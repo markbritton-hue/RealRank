@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Import Tournaments — LeagueCast</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#060a14', 900: '#0a0f1e', 800: '#0d1530', 700: '#1a2444', 600: '#243060' },
+            forest: { 700: '#1a4731', 600: '#1e5c3a', 500: '#2d7a52', 400: '#3a9966' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-navy-900 text-slate-100 min-h-screen">
+  <script src="./firebase-init.js"></script>
+  <script src="./auth-guard.js"></script>
+
+  <nav class="bg-navy-800 border-b border-forest-700 px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-amber-400 font-bold text-xl">🎣 LeagueCast</a>
+    <a href="tournaments.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 hover:text-amber-400 px-4 py-2 rounded-lg font-semibold text-sm border border-navy-600 hover:border-amber-400 transition-colors">← Back</a>
+  </nav>
+
+  <main class="p-4 max-w-2xl mx-auto" x-data="importManager" x-init="init()">
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-amber-400 mb-2">Import Tournaments from Google Sheet</h1>
+      <p class="text-slate-400">This will update all tournaments except the first one (5/28/2026)</p>
+    </div>
+
+    <!-- Status -->
+    <div x-show="status" :class="{
+      'bg-forest-700/20 border-forest-500/50': status.type === 'success',
+      'bg-red-900/20 border-red-500/50': status.type === 'error',
+      'bg-amber-900/20 border-amber-500/50': status.type === 'info'
+    }" class="border rounded-lg p-4 mb-6">
+      <p x-text="status.message"></p>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="flex justify-center py-12">
+      <div class="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Tournament preview -->
+    <div x-show="!loading && tournaments.length > 0" class="space-y-4 mb-6">
+      <div class="border border-navy-600 rounded-lg overflow-hidden">
+        <div class="bg-navy-800 px-4 py-3 font-semibold text-amber-400">Tournaments to Import (<span x-text="tournaments.length"></span>)</div>
+        <div class="divide-y divide-navy-700 max-h-96 overflow-y-auto">
+          <template x-for="(t, idx) in tournaments" :key="idx">
+            <div class="px-4 py-3 bg-navy-900 text-sm">
+              <div class="font-semibold text-white" x-text="t.name"></div>
+              <div class="text-xs text-slate-400 mt-1">
+                <span x-text="t.dateDisplay"></span> • <span x-text="t.locationName || '—'"></span>
+              </div>
+              <div x-show="t.startTime" class="text-xs text-slate-400 mt-1">
+                Start: <span x-text="t.startTime"></span>
+                <span x-show="t.noWakeTime">• No Wake: <span x-text="t.noWakeTime"></span></span>
+                <span x-show="t.sizeLimit">• Size: <span x-text="t.sizeLimit + '&quot;'"></span></span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import button -->
+    <div class="flex gap-3">
+      <button @click="importTournaments()" :disabled="loading || importing" :class="loading ? 'opacity-50 cursor-not-allowed' : ''"
+        class="flex-1 bg-forest-600 hover:bg-forest-500 disabled:opacity-50 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+        <span x-text="importing ? 'Importing...' : 'Import Tournaments'"></span>
+      </button>
+      <a href="tournaments.html" class="bg-navy-700 hover:bg-navy-600 text-slate-200 px-4 py-3 rounded-lg font-semibold border border-navy-600 transition-colors">
+        Cancel
+      </a>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      const db = firebase.firestore();
+      const sheetData = [
+        { date: '5/28/2026', location: 'Pleasant Lake', startTime: '6:00 PM', noWakeTime: '7:30 PM', sizeLimit: 10, week: 1, skip: true },
+        { date: '6/4/2026', location: 'Stump Bay', startTime: '6:00 PM', noWakeTime: null, sizeLimit: 14, week: 2 },
+        { date: '2/11/2026', location: 'Fish Lake', startTime: '6:00 PM', noWakeTime: null, sizeLimit: 14, week: 3 },
+        { date: '6/18/2026', location: 'Clear Lake', startTime: '6:00 PM', noWakeTime: '6:30 PM', sizeLimit: 14, week: 4 },
+        { date: '6/25/2026', location: 'Diamond Lake', startTime: '6:00 PM', noWakeTime: null, sizeLimit: 14, week: 5 },
+        { date: '7/2/2026', location: 'Austin Lake', startTime: '6:00 PM', noWakeTime: null, sizeLimit: 14, week: 6 },
+        { date: '7/9/2026', location: 'Klinger Lake', startTime: '6:00 PM', noWakeTime: null, sizeLimit: 14, week: 7 },
+        { date: '7/16/2026', location: 'Long Lake', startTime: '6:00 PM', noWakeTime: null, sizeLimit: 14, week: 8 },
+        { date: '7/23/2026', location: 'Cedar Lake', startTime: '6:00 PM', noWakeTime: null, sizeLimit: 14, week: 9 },
+        { date: '7/30/2026', location: 'Pleasant Lake', startTime: '6:00 PM', noWakeTime: '7:30 PM', sizeLimit: 10, week: 10 },
+        { date: '8/6/2026', location: 'Klinger Lake', startTime: '6:00 PM', noWakeTime: null, sizeLimit: 14, week: 11 },
+        { date: '8/13/2026', location: 'Austin Lake', startTime: '6:00 PM', noWakeTime: null, sizeLimit: 14, week: 12 },
+        { date: '8/20/2026', location: 'Fish Lake', startTime: '5:30 PM', noWakeTime: null, sizeLimit: 14, week: 13 },
+        { date: '8/27/2026', location: 'Corey Lake', startTime: '5:30 PM', noWakeTime: null, sizeLimit: 10, week: 14 },
+        { date: '9/3/2026', location: 'Long Lake', startTime: '5:30 PM', noWakeTime: null, sizeLimit: 14, week: 15 },
+        { date: '9/10/2026', location: 'Clear Lake', startTime: '5:30 PM', noWakeTime: '6:30 PM', sizeLimit: 14, week: 16 },
+      ];
+
+      Alpine.data('importManager', () => ({
+        tournaments: [],
+        loading: true,
+        importing: false,
+        status: null,
+
+        init() {
+          this.loadTournaments();
+        },
+
+        loadTournaments() {
+          this.tournaments = sheetData
+            .filter(t => !t.skip)
+            .map(t => {
+              const [m, d, y] = t.date.split('/').map(Number);
+              const date = new Date(y, m - 1, d);
+              return {
+                ...t,
+                dateDisplay: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+                name: `Week ${t.week} — ${t.location}`,
+                dateObj: date,
+                dateStr: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+              };
+            });
+          this.loading = false;
+        },
+
+        async importTournaments() {
+          this.importing = true;
+          this.status = null;
+          let updated = 0;
+          let errors = 0;
+
+          try {
+            for (const t of this.tournaments) {
+              const timeToMinutes = (timeStr) => {
+                if (!timeStr) return null;
+                const [time, period] = timeStr.split(' ');
+                const [h, m] = time.split(':').map(Number);
+                const hours = period === 'PM' && h !== 12 ? h + 12 : (period === 'AM' && h === 12 ? 0 : h);
+                return `${String(hours).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+              };
+
+              const data = {
+                name: t.name,
+                date: firebase.firestore.Timestamp.fromDate(t.dateObj),
+                locationName: t.location,
+                startTime: timeToMinutes(t.startTime),
+                noWakeTime: timeToMinutes(t.noWakeTime),
+                sizeLimit: t.sizeLimit,
+                mapsLink: null
+              };
+
+              // Check if tournament exists
+              const snap = await db.collection('tournaments')
+                .where('name', '==', t.name)
+                .get();
+
+              if (snap.empty) {
+                // Create new
+                await db.collection('tournaments').add({
+                  ...data,
+                  status: 'closed',
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  closedAt: null
+                });
+              } else {
+                // Update existing
+                await snap.docs[0].ref.update(data);
+              }
+              updated++;
+            }
+
+            this.status = {
+              type: 'success',
+              message: `Successfully imported ${updated} tournaments!`
+            };
+          } catch (e) {
+            console.error(e);
+            this.status = {
+              type: 'error',
+              message: `Error importing tournaments: ${e.message}`
+            };
+          }
+          this.importing = false;
+        }
+      }));
+    });
+  </script>
+</body>
+</html>
