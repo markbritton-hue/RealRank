@@ -242,13 +242,11 @@
         init() {
           db.collection('tournaments').orderBy('date', 'asc').onSnapshot(snap => {
             const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            const open = all.filter(t => t.status === 'open');
-            const closed = all.filter(t => t.status !== 'open').sort((a, b) => {
+            this.tournaments = all.sort((a, b) => {
               const aDate = a.date?.toDate?.() || new Date(a.date);
               const bDate = b.date?.toDate?.() || new Date(b.date);
               return aDate - bDate;
             });
-            this.tournaments = [...open, ...closed];
             this.loading = false;
           });
           db.collection('checkins').get().then(snap => {
