@@ -161,8 +161,9 @@
           <div class="bg-navy-900 border border-navy-700 rounded-xl p-4">
             <label class="block text-sm font-semibold text-slate-300 mb-3">🐟 Big Bass Weight</label>
             <div class="flex items-center gap-3">
-              <input type="number" min="0" max="30" step="0.001" inputmode="decimal"
-                x-model.number="form.bigBassWeight" placeholder="0.000"
+              <input type="text" inputmode="decimal" pattern="^\d+(\.\d{0,3})?$"
+                x-model="form.bigBassWeight" placeholder="0.000"
+                @input="form.bigBassWeight = limitDecimals(form.bigBassWeight, 3)"
                 class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
               <div class="text-slate-500 text-2xl font-light">lbs</div>
             </div>
@@ -172,8 +173,9 @@
           <div class="bg-navy-900 border border-navy-700 rounded-xl p-4">
             <label class="block text-sm font-semibold text-slate-300 mb-3">Total Weight</label>
             <div class="flex items-center gap-3">
-              <input type="number" min="0" max="200" step="0.001" inputmode="decimal"
-                x-model.number="form.totalWeight" placeholder="0.000"
+              <input type="text" inputmode="decimal" pattern="^\d+(\.\d{0,3})?$"
+                x-model="form.totalWeight" placeholder="0.000"
+                @input="form.totalWeight = limitDecimals(form.totalWeight, 3)"
                 class="flex-1 bg-navy-800 border border-navy-600 rounded-lg px-3 py-3 text-white text-xl font-mono text-center placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors">
               <div class="text-slate-500 text-2xl font-light">lbs</div>
             </div>
@@ -237,6 +239,17 @@
         loading: true,
         saving: false,
         formError: null,
+
+        limitDecimals(value, decimals) {
+          if (!value) return '';
+          const str = String(value);
+          const parts = str.split('.');
+          if (parts.length > 2) return parts[0] + '.' + parts.slice(1).join('');
+          if (parts[1] && parts[1].length > decimals) {
+            return parts[0] + '.' + parts[1].slice(0, decimals);
+          }
+          return str;
+        },
 
         async init() {
           const params = new URLSearchParams(window.location.search);
@@ -310,18 +323,18 @@
 
         async submitWeighIn() {
           this.formError = null;
-          const totalWeight = this.form.totalWeight || 0;
+          const totalWeight = parseFloat(this.form.totalWeight) || 0;
           if (!totalWeight) { this.formError = 'Enter a total weight.'; return; }
 
           const data = {
             tournamentId: this.tournamentId,
             teamId: this.activeTeam.id,
             fishCount: this.form.fishCount || 0,
-            bigBassWeight: this.form.bigBassWeight || 0,
-            bigFish: this.form.bigBassWeight || 0,
+            bigBassWeight: parseFloat(this.form.bigBassWeight) || 0,
+            bigFish: parseFloat(this.form.bigBassWeight) || 0,
             totalWeight: totalWeight,
             penaltyCount: this.form.penaltyCount || 0,
-            adjustedWeight: Math.round(this.adjustedWeight * 100) / 100,
+            adjustedWeight: Math.round(this.adjustedWeight * 1000) / 1000,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           };
 
